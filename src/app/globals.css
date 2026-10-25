@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
+@theme {
+  --color-girls-pink: #E31B6D;
+  --color-girls-pink-hover: #C2185B;
+  --color-girls-pink-light: #FCE7F1;
+  --color-girls-blush: #FDF1F5;
+  --color-girls-surface: #FAF0F4;
+  --color-girls-bar: #9B004F;
+  --color-girls-dark: #16121E;
+  --color-girls-plum: #1F1426;
+  --color-girls-plum-card: #281932;
+  --color-girls-gold: #D4AF37;
+
+  --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FFFFFF;
+  --foreground: #16121E;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
