@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 interface LogoProps {
   className?: string;
   variant?: 'navbar' | 'footer';
@@ -7,7 +5,7 @@ interface LogoProps {
 
 export default function Logo({ className = '', variant = 'navbar' }: LogoProps) {
   return (
-    <Link href="/" className={`flex items-center gap-3 group shrink-0 ${className}`}>
+    <a href="/" className={`flex items-center gap-3 group shrink-0 ${className}`}>
       {/* Emblem with double circular ring and scales of justice */}
       <div className="relative w-11 h-11 rounded-full p-0.5 border border-girls-pink/40 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
         <div className="w-full h-full rounded-full border border-girls-pink/70 flex items-center justify-center bg-white shadow-xs">
@@ -45,6 +43,6 @@ export default function Logo({ className = '', variant = 'navbar' }: LogoProps) 
           Comunidad Legal
         </span>
       </div>
-    </Link>
+    </a>
   );
 }

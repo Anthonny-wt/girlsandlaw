@@ -1,7 +1,4 @@
-'use client';
-
 import { useState } from 'react';
-import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import Button from '@/components/ui/Button';
@@ -23,13 +20,13 @@ export default function Navbar() {
             {/* Central Navigation Links */}
             <nav className="hidden xl:flex items-center gap-6">
               {NAV_LINKS.map((link) => (
-                <Link
+                <a
                   key={link.href}
                   href={link.href}
                   className="text-[13px] font-medium text-girls-dark/85 hover:text-girls-pink transition-colors duration-150 py-1"
                 >
                   {link.label}
-                </Link>
+                </a>
               ))}
             </nav>
 
@@ -101,14 +98,14 @@ export default function Navbar() {
           <div className="xl:hidden bg-white border-t border-[#F8D7E3] px-5 py-4 space-y-3 shadow-lg">
             <div className="flex flex-col space-y-2">
               {NAV_LINKS.map((link) => (
-                <Link
+                <a
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className="text-sm font-medium text-girls-dark hover:text-girls-pink py-1.5 transition-colors"
                 >
                   {link.label}
-                </Link>
+                </a>
               ))}
             </div>
 
