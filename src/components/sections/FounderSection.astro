@@ -2,163 +2,156 @@
 import { InstagramIcon } from '@/components/ui/SocialIcons';
 ---
 
-<section id="fundadora" class="py-12 sm:py-16">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    {/* Container styled identically to the screenshot: rounded soft pink card */}
-    <div class="bg-[#FDF1F5] rounded-[2.5rem] p-6 sm:p-10 lg:p-14 border border-[#F9D7E4] shadow-xs">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
-        {/* Left Column: Phone Mockup Dark Plum Card */}
-        <div class="lg:col-span-5 flex justify-center">
-          <div class="w-full max-w-[310px] rounded-[2.5rem] bg-[#1E1124] border-2 border-[#E31B6D] p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[460px]">
-            {/* Phone Top Notch / Speaker Detail */}
-            <div class="flex justify-center mb-3">
-              <div class="w-20 h-1.5 bg-white/20 rounded-full"></div>
-            </div>
+<section id="fundadora" class="py-16 sm:py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  {/* Pouf Cushion Card */}
+  <div class="bg-white rounded-card p-6 sm:p-10 lg:p-14 border border-pink-200/80 cushion-card">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+      {/* Left Column: Phone Mockup White/Pink Card with POUF cushion */}
+      <div class="lg:col-span-5 flex justify-center">
+        <div class="w-full max-w-[320px] rounded-[36px] bg-gradient-to-b from-[#FFF5F9] via-[#FFFFFF] to-[#FFF0F6] border-2 border-pink-200/80 p-5 cushion-card relative overflow-hidden flex flex-col justify-between min-h-[480px]">
+          {/* Phone Top Notch / Speaker Detail */}
+          <div class="flex justify-center mb-3">
+            <div class="w-20 h-1.5 bg-pink/40 rounded-full"></div>
+          </div>
 
-            {/* Avatar Character Illustration */}
-            <div class="flex-1 flex items-center justify-center my-4">
-              <div class="relative w-44 h-56 mx-auto flex items-end justify-center">
-                <div class="absolute inset-0 bg-pink-500/10 rounded-full blur-2xl transform scale-90"></div>
-                <svg
-                  viewBox="0 0 200 240"
-                  class="w-full h-full relative z-10 drop-shadow-xl"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  {/* Hair - Back layer */}
-                  <path
-                    d="M60 90C60 48 80 32 100 32C120 32 140 48 140 90C140 120 135 130 130 135C125 125 122 110 122 100C122 80 115 50 100 50C85 50 78 80 78 100C78 110 75 125 70 135C65 130 60 120 60 90Z"
-                    fill="#231F20"
-                  />
-                  {/* Neck */}
-                  <rect x="91" y="110" width="18" height="25" rx="4" fill="#F4BA9D" />
-                  {/* Head / Face */}
-                  <ellipse cx="100" cy="85" rx="28" ry="32" fill="#F8CBB0" />
-                  {/* Front Hair Bob Style with Parting */}
-                  <path
-                    d="M72 82C72 50 82 42 100 42C118 42 128 50 128 82C128 95 125 106 122 108C120 95 116 74 100 74C86 74 80 95 78 108C75 106 72 95 72 82Z"
-                    fill="#1C1819"
-                  />
-                  {/* Pearl Earrings */}
-                  <circle cx="73" cy="92" r="3.5" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
-                  <circle cx="127" cy="92" r="3.5" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
-                  {/* Eyebrows */}
-                  <path d="M84 76C87 74 92 75 94 77" stroke="#2D1C1B" stroke-width="2.2" stroke-linecap="round" />
-                  <path d="M106 77C108 75 113 74 116 76" stroke="#2D1C1B" stroke-width="2.2" stroke-linecap="round" />
-                  {/* Eyes */}
-                  <circle cx="89" cy="84" r="3.2" fill="#241B18" />
-                  <circle cx="111" cy="84" r="3.2" fill="#241B18" />
-                  <circle cx="88" cy="83" r="1" fill="#FFFFFF" />
-                  <circle cx="110" cy="83" r="1" fill="#FFFFFF" />
-                  {/* Nose */}
-                  <path d="M100 85v6c1 1 2 0 2 0" stroke="#E29F7C" stroke-width="1.8" stroke-linecap="round" />
-                  {/* Smiling Lips */}
-                  <path
-                    d="M93 99C96 103 104 103 107 99"
-                    stroke="#D84A6E"
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                  />
-                  {/* Lawyer Judicial Robe */}
-                  <path
-                    d="M48 230C50 170 65 145 78 135L92 142L100 148L108 142L122 135C135 145 150 170 152 230H48Z"
-                    fill="#1E1929"
-                  />
-                  {/* Scalloped White Lace Collar */}
-                  <path
-                    d="M80 134C82 145 88 152 92 152C96 152 98 146 100 148C102 146 104 152 108 152C112 152 118 145 120 134L114 130C108 138 104 140 100 140C96 140 92 138 86 130L80 134Z"
-                    fill="#FFFFFF"
-                  />
-                  <circle cx="94" cy="144" r="1.5" fill="#E2E8F0" />
-                  <circle cx="100" cy="144" r="1.5" fill="#E2E8F0" />
-                  <circle cx="106" cy="144" r="1.5" fill="#E2E8F0" />
-                  {/* Gavel in hand */}
-                  <path
-                    d="M136 170C142 165 148 160 152 155"
-                    stroke="#F8CBB0"
-                    stroke-width="9"
-                    stroke-linecap="round"
-                  />
-                  <circle cx="152" cy="154" r="5" fill="#F8CBB0" />
-                  <line
-                    x1="148"
-                    y1="168"
-                    x2="158"
-                    y2="135"
-                    stroke="#854D27"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                  />
-                  <g transform="rotate(22 160 135)">
-                    <rect x="150" y="128" width="18" height="10" rx="2" fill="#583115" />
-                    <rect x="148" y="126" width="3" height="14" rx="1" fill="#C99458" />
-                    <rect x="167" y="126" width="3" height="14" rx="1" fill="#C99458" />
-                  </g>
-                </svg>
-              </div>
-            </div>
-
-            {/* Bottom Founder Identity */}
-            <div class="pt-2 text-left">
-              <span class="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-[#E31B6D] text-white shadow-xs">
-                Fundadora
-              </span>
-              <h3 class="font-serif text-2xl font-bold text-white mt-2 leading-tight tracking-tight">
-                Roxana Rivera
-              </h3>
-              <p class="text-pink-200/70 text-sm mt-0.5 font-medium">
-                @roxanamriverag
-              </p>
+          {/* Avatar Character Illustration */}
+          <div class="flex-1 flex items-center justify-center my-4">
+            <div class="relative w-44 h-56 mx-auto flex items-end justify-center">
+              <div class="absolute inset-0 bg-pink/20 rounded-full blur-2xl transform scale-90"></div>
+              <svg
+                viewBox="0 0 200 240"
+                class="w-full h-full relative z-10 drop-shadow-xl"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Hair - Back layer */}
+                <path
+                  d="M60 90C60 48 80 32 100 32C120 32 140 48 140 90C140 120 135 130 130 135C125 125 122 110 122 100C122 80 115 50 100 50C85 50 78 80 78 100C78 110 75 125 70 135C65 130 60 120 60 90Z"
+                  fill="#231F20"
+                />
+                {/* Neck */}
+                <rect x="91" y="110" width="18" height="25" rx="4" fill="#F4BA9D" />
+                {/* Head / Face */}
+                <ellipse cx="100" cy="85" rx="28" ry="32" fill="#F8CBB0" />
+                {/* Front Hair Bob Style with Parting */}
+                <path
+                  d="M72 82C72 50 82 42 100 42C118 42 128 50 128 82C128 95 125 106 122 108C120 95 116 74 100 74C86 74 80 95 78 108C75 106 72 95 72 82Z"
+                  fill="#1C1819"
+                />
+                {/* Pearl Earrings */}
+                <circle cx="73" cy="92" r="3.5" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+                <circle cx="127" cy="92" r="3.5" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+                {/* Eyebrows */}
+                <path d="M84 76C87 74 92 75 94 77" stroke="#2D1C1B" stroke-width="2.2" stroke-linecap="round" />
+                <path d="M106 77C108 75 113 74 116 76" stroke="#2D1C1B" stroke-width="2.2" stroke-linecap="round" />
+                {/* Eyes */}
+                <circle cx="89" cy="84" r="3.2" fill="#241B18" />
+                <circle cx="111" cy="84" r="3.2" fill="#241B18" />
+                <circle cx="88" cy="83" r="1" fill="#FFFFFF" />
+                <circle cx="110" cy="83" r="1" fill="#FFFFFF" />
+                {/* Nose */}
+                <path d="M100 85v6c1 1 2 0 2 0" stroke="#E29F7C" stroke-width="1.8" stroke-linecap="round" />
+                {/* Smiling Lips */}
+                <path
+                  d="M93 99C96 103 104 103 107 99"
+                  stroke="#D84A6E"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                />
+                {/* Lawyer Judicial Robe */}
+                <path
+                  d="M48 230C50 170 65 145 78 135L92 142L100 148L108 142L122 135C135 145 150 170 152 230H48Z"
+                  fill="#2D1E42"
+                />
+                {/* Scalloped White Lace Collar */}
+                <path
+                  d="M80 134C82 145 88 152 92 152C96 152 98 146 100 148C102 146 104 152 108 152C112 152 118 145 120 134L114 130C108 138 104 140 100 140C96 140 92 138 86 130L80 134Z"
+                  fill="#FFFFFF"
+                />
+                <circle cx="94" cy="144" r="1.5" fill="#E2E8F0" />
+                <circle cx="100" cy="144" r="1.5" fill="#E2E8F0" />
+                <circle cx="106" cy="144" r="1.5" fill="#E2E8F0" />
+                {/* Gavel in hand */}
+                <path
+                  d="M136 170C142 165 148 160 152 155"
+                  stroke="#F8CBB0"
+                  stroke-width="9"
+                  stroke-linecap="round"
+                />
+                <circle cx="152" cy="154" r="5" fill="#F8CBB0" />
+                <line
+                  x1="148"
+                  y1="168"
+                  x2="158"
+                  y2="135"
+                  stroke="#854D27"
+                  stroke-width="3.5"
+                  stroke-linecap="round"
+                />
+                <g transform="rotate(22 160 135)">
+                  <rect x="150" y="128" width="18" height="10" rx="2" fill="#583115" />
+                  <rect x="148" y="126" width="3" height="14" rx="1" fill="#C99458" />
+                  <rect x="167" y="126" width="3" height="14" rx="1" fill="#C99458" />
+                </g>
+              </svg>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Leadership Quote & Vision */}
-        <div class="lg:col-span-7 flex flex-col justify-center space-y-6">
-          {/* Category Eyebrow */}
-          <div>
-            <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-[#E31B6D]">
-              Liderazgo &amp; Visión
+          {/* Bottom Founder Identity */}
+          <div class="pt-2 text-left">
+            <span class="inline-block px-3 py-1 rounded-pill text-[10px] font-black uppercase tracking-widest bg-pink text-ink cushion-control">
+              Fundadora
             </span>
-          </div>
-
-          {/* Main Headline */}
-          <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#16121E] tracking-tight leading-[1.15]">
-            Un mensaje de nuestra fundadora
-          </h2>
-
-          {/* Quote Block with Pink Border Indicator */}
-          <div class="border-l-4 border-[#E31B6D] pl-5 sm:pl-7 py-1">
-            <blockquote class="font-serif text-base sm:text-lg lg:text-xl text-[#2B2332]/90 italic leading-relaxed">
-              &ldquo;Girls and Law nació para recordar a cada mujer que estudia o ejerce el
-              derecho que no necesita encajar en un molde rígido para ser brillante.
-              Puedes amar la moda, la música pop, la cultura y al mismo tiempo ser una
-              abogada o profesional altamente rigurosa e imparable.&rdquo;
-            </blockquote>
-          </div>
-
-          {/* Author Attribution */}
-          <div class="space-y-0.5 pt-1">
-            <h4 class="font-bold text-base text-[#16121E]">
+            <h3 class="font-serif text-2xl font-black text-ink mt-2 leading-tight tracking-tight">
               Roxana Rivera
-            </h4>
-            <p class="text-xs sm:text-sm text-gray-500 font-medium">
-              Fundadora &amp; Directora de Girls and Law
+            </h3>
+            <p class="text-[#E31B6D] text-xs mt-0.5 font-bold">
+              @roxanamriverag
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Action Button */}
-          <div class="pt-2">
-            <a
-              href="https://instagram.com/roxanamriverag"
-              target="_blank"
-              rel="noreferrer"
-              class="inline-flex items-center gap-2.5 px-6 py-3 rounded-full text-sm font-bold bg-[#E31B6D] hover:bg-[#C2185B] text-white shadow-md shadow-[#E31B6D]/30 transition-all duration-200 hover:scale-[1.02]"
-            >
-              <InstagramIcon className="w-4 h-4" />
-              <span>Conectar con Roxana</span>
-            </a>
-          </div>
+      {/* Right Column: Leadership Quote & Vision */}
+      <div class="lg:col-span-7 flex flex-col justify-center space-y-6">
+        <div>
+          <span class="text-xs font-black uppercase tracking-[0.2em] text-[#E31B6D]">
+            Liderazgo &amp; Visión
+          </span>
+        </div>
+
+        <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-ink tracking-tight leading-[1.15]">
+          Un mensaje de nuestra fundadora
+        </h2>
+
+        <div class="border-l-4 border-pink pl-5 sm:pl-7 py-1">
+          <blockquote class="font-serif text-base sm:text-lg lg:text-xl text-ink/90 italic leading-relaxed">
+            &ldquo;Girls and Law nació para recordar a cada mujer que estudia o ejerce el
+            derecho que no necesita encajar en un molde rígido para ser brillante.
+            Puedes amar la moda, la música pop, la cultura y al mismo tiempo ser una
+            abogada o profesional altamente rigurosa e imparable.&rdquo;
+          </blockquote>
+        </div>
+
+        <div class="space-y-0.5 pt-1">
+          <h4 class="font-black text-base text-ink font-pouf">
+            Roxana Rivera
+          </h4>
+          <p class="text-xs sm:text-sm text-muted font-bold font-pouf">
+            Fundadora &amp; Directora de Girls and Law
+          </p>
+        </div>
+
+        <div class="pt-2">
+          <a
+            href="https://instagram.com/roxanamriverag"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-control text-sm font-black bg-pink text-ink cushion-control active:cushion-control-active transition-all"
+          >
+            <InstagramIcon className="w-4 h-4" />
+            <span>Conectar con Roxana</span>
+          </a>
         </div>
       </div>
     </div>

@@ -1,0 +1,171 @@
+---
+import { InstagramIcon, TikTokIcon, SpotifyIcon } from '@/components/ui/SocialIcons';
+---
+
+<footer class="w-full px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto pb-12 pt-6">
+  <div class="bg-white rounded-card p-8 sm:p-12 lg:p-14 cushion-card border border-pink-100/80">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-10 border-b border-pink-100">
+      {/* Brand & Social Column (4 cols) */}
+      <div class="lg:col-span-4 space-y-4">
+        <a href="/" class="flex items-center gap-3 group inline-flex">
+          <img
+            src="/logogirlsandlaw.webp"
+            alt="Girls & Law Logo"
+            width="48"
+            height="48"
+            class="w-12 h-12 object-contain rounded-full transition-transform duration-200 group-hover:scale-105"
+          />
+          <div class="flex flex-col">
+            <span class="font-serif font-black text-xl text-ink leading-tight">
+              Girls <span class="text-[#E31B6D] italic">&amp;</span> Law
+            </span>
+            <span class="text-[10px] font-black tracking-[0.2em] text-[#E31B6D] uppercase leading-none">
+              Masterclass 2026
+            </span>
+          </div>
+        </a>
+
+        <p class="text-sm font-bold text-muted max-w-sm leading-relaxed font-pouf">
+          Redefiniendo el ejercicio jurídico desde la autenticidad, la excelencia procesal y la sororidad. Formando a la nueva generación de juristas líderes.
+        </p>
+
+        {/* 1st-Pouf Clay Social Blobs */}
+        <div class="flex items-center gap-3 pt-2">
+          <a
+            href="https://instagram.com/girlsandlaw"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Instagram de Girls and Law"
+            class="w-10 h-10 rounded-blob bg-pink text-ink cushion-control active:cushion-control-active active:translate-y-[2px] transition-all hover:scale-105 flex items-center justify-center group"
+          >
+            <InstagramIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+          </a>
+          <a
+            href="https://tiktok.com/@girlsandlaw"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="TikTok de Girls and Law"
+            class="w-10 h-10 rounded-blob bg-yellow text-ink cushion-control active:cushion-control-active active:translate-y-[2px] transition-all hover:scale-105 flex items-center justify-center group"
+          >
+            <TikTokIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+          </a>
+          <a
+            href="https://spotify.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Spotify de Girls and Law"
+            class="w-10 h-10 rounded-blob bg-mint text-ink cushion-control active:cushion-control-active active:translate-y-[2px] transition-all hover:scale-105 flex items-center justify-center group"
+          >
+            <SpotifyIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+          </a>
+        </div>
+      </div>
+
+      {/* Nav Column 1: Masterclass (3 cols) */}
+      <div class="lg:col-span-3 space-y-3">
+        <h4 class="text-xs font-black uppercase tracking-wider text-[#E31B6D]">
+          Masterclass
+        </h4>
+        <ul class="space-y-2 text-sm font-bold text-muted font-pouf">
+          <li>
+            <a href="#trailer" class="hover:text-ink hover:underline transition-colors">
+              Trailer &amp; Muestra 4K
+            </a>
+          </li>
+          <li>
+            <a href="#metodologia" class="hover:text-ink hover:underline transition-colors">
+              Metodología Clínica
+            </a>
+          </li>
+          <li>
+            <a href="#temario" class="hover:text-ink hover:underline transition-colors">
+              Plan de Estudios (4 Módulos)
+            </a>
+          </li>
+          <li>
+            <a href="#fundadora" class="hover:text-ink hover:underline transition-colors">
+              Roxana Rivera &amp; Visión
+            </a>
+          </li>
+          <li>
+            <a href="#precios" class="hover:text-ink hover:underline transition-colors">
+              Inversión &amp; Admisión VIP
+            </a>
+          </li>
+          <li>
+            <a href="#faq" class="hover:text-ink hover:underline transition-colors">
+              Preguntas Frecuentes
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      {/* Nav Column 2: Comunidad & Vault (2 cols) */}
+      <div class="lg:col-span-2 space-y-3">
+        <h4 class="text-xs font-black uppercase tracking-wider text-[#E31B6D]">
+          Ecosistema
+        </h4>
+        <ul class="space-y-2 text-sm font-bold text-muted font-pouf">
+          <li>
+            <a href="#metodologia" class="hover:text-ink hover:underline transition-colors">
+              El Vault Procesal
+            </a>
+          </li>
+          <li>
+            <a href="#fundadora" class="hover:text-ink hover:underline transition-colors">
+              Comunidad de Egresadas
+            </a>
+          </li>
+          <li>
+            <a href="mailto:contacto@girlsandlaw.com" class="hover:text-ink hover:underline transition-colors">
+              Alianzas &amp; Universidades
+            </a>
+          </li>
+          <li>
+            <a href="mailto:soporte@girlsandlaw.com" class="hover:text-ink hover:underline transition-colors">
+              Mesa de Ayuda
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      {/* Newsletter Box (3 cols) */}
+      <div class="lg:col-span-3 space-y-3">
+        <div class="p-4 rounded-control bg-[#FFF5F9] cushion-row space-y-3">
+          <span class="inline-block px-2.5 py-0.5 rounded-pill text-[10px] font-black uppercase tracking-wider bg-pink text-ink">
+            Newsletter Semanal
+          </span>
+          <h5 class="text-xs font-black text-ink font-pouf">
+            Estrategia procesal y consejos directos a tu bandeja.
+          </h5>
+          <form class="space-y-2" onsubmit="event.preventDefault(); alert('¡Gracias por suscribirte al boletín de Girls & Law!');">
+            <input
+              type="email"
+              placeholder="tu@correo.com"
+              required
+              class="w-full text-xs font-bold px-3 py-2 rounded-control bg-white text-ink placeholder:text-muted/60 cushion-field outline-none focus:cushion-field-focus transition-all"
+            />
+            <button
+              type="submit"
+              class="w-full text-xs font-black py-2 px-3 rounded-control bg-pink text-ink cushion-control active:cushion-control-active active:translate-y-[1px] cursor-pointer transition-all hover:bg-[#FF9EC4]"
+            >
+              Suscribirme Gratis
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {/* Bottom Bar with 1st-Pouf Pill */}
+    <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-bold text-muted">
+      <p>© 2026 Girls &amp; Law. Todos los derechos reservados.</p>
+
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-[#FFF5F9] border border-pink-100 text-[11px] font-black text-ink">
+          <span class="w-2 h-2 rounded-full bg-mint"></span>
+          Inscripciones abiertas · Edición 2026
+        </span>
+      </div>
+    </div>
+  </div>
+</footer>

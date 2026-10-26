@@ -1,15 +1,51 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import HeroSection from '@/components/sections/HeroSection.astro';
+import { PoufNavbar } from '@/components/pouf/PoufNavbar';
+import { PoufHero } from '@/components/pouf/PoufHero';
+import { PoufFeatures } from '@/components/pouf/PoufFeatures';
+import { PoufSyllabus } from '@/components/pouf/PoufSyllabus';
 import FounderSection from '@/components/sections/FounderSection.astro';
+import { PoufPricing } from '@/components/pouf/PoufPricing';
+import { PoufFAQ } from '@/components/pouf/PoufFAQ';
+import { PoufBottomCTA } from '@/components/pouf/PoufBottomCTA';
+import { PoufToast } from '@/components/pouf/PoufToast';
+import { PoufBottomNav } from '@/components/pouf/PoufBottomNav';
 ---
 
-<Layout>
-  <div class="flex flex-col min-h-screen">
-    {/* Hero Section with Community & Heritage Archive */}
-    <HeroSection />
+<Layout
+  title="Masterclass: Litigio de Alto Impacto | Girls & Law"
+  description="La Masterclass definitiva para abogadas y juristas que buscan dominar los tribunales con poder, argumentación estratégica y autenticidad. Por Girls & Law."
+>
+  {/* 1st-Pouf Floating Capsule Sticky Navbar (follows when scrolling) */}
+  <PoufNavbar client:load />
 
-    {/* Founder Leadership Section (Exact visual match from provided design) */}
+  {/* Main 1st-Pouf Claymorphic Landing Flow with top padding for fixed navbar */}
+  <div class="pt-20 sm:pt-24 flex flex-col">
+    {/* 1. 1st-Pouf Hero with 3D Cushion Cinema Player */}
+    <PoufHero client:visible />
+
+    {/* 2. 1st-Pouf Features (Bento Grid of Cushioned Cards) */}
+    <PoufFeatures client:visible />
+
+    {/* 3. 1st-Pouf Master-Detail Interactive Syllabus */}
+    <PoufSyllabus client:visible />
+
+    {/* 4. Instructor Leadership (Roxana Rivera) */}
     <FounderSection />
+
+    {/* 5. 1st-Pouf Pricing Cards with Segmented Switcher */}
+    <PoufPricing client:visible />
+
+    {/* 6. 1st-Pouf Accordion FAQ Cards */}
+    <PoufFAQ client:visible />
+
+    {/* 7. 1st-Pouf Large Bottom CTA Cushion */}
+    <PoufBottomCTA client:visible />
   </div>
+
+  {/* 1st-Pouf Realtime Social Proof Toast */}
+  <PoufToast client:load />
+
+  {/* 1st-Pouf Mobile Bottom Navigation */}
+  <PoufBottomNav client:load />
 </Layout>

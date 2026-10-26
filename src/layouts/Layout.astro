@@ -1,7 +1,6 @@
 ---
 import '@/styles/global.css';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer.astro';
+import PoufFooter from '@/components/pouf/PoufFooter.astro';
 
 interface Props {
   title?: string;
@@ -9,7 +8,7 @@ interface Props {
 }
 
 const {
-  title = 'Girls & Law | Comunidad Legal',
+  title = 'Girls & Law | Masterclass: Litigio de Alto Impacto',
   description = 'Comunidad de mujeres multifacéticas en el derecho. Redefiniendo el ejercicio jurídico desde la autenticidad, la excelencia y la sororidad.',
 } = Astro.props;
 ---
@@ -28,13 +27,13 @@ const {
     {/* Primary SEO */}
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="keywords" content="Girls & Law, comunidad legal, mujeres en el derecho, abogadas, derecho femenino" />
+    <meta name="keywords" content="Girls & Law, comunidad legal, mujeres en el derecho, masterclass litigio, abogadas" />
 
-    {/* Google Fonts: Playfair Display & Inter */}
+    {/* Google Fonts: Nunito Variable + Playfair Display */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&display=swap"
       rel="stylesheet"
     />
 
@@ -43,11 +42,10 @@ const {
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
   </head>
-  <body class="min-h-screen flex flex-col bg-white text-girls-dark antialiased">
-    <Navbar client:load />
+  <body class="min-h-screen flex flex-col bg-[#FFF5F9] text-ink antialiased font-pouf">
     <main class="flex-1">
       <slot />
     </main>
-    <Footer />
+    <PoufFooter />
   </body>
 </html>
