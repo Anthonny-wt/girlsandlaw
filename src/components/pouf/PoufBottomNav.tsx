@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react';
-
-interface TabItem {
-  id: string;
-  label: string;
-  href: string;
-  icon: string;
-}
-
-const TABS: TabItem[] = [
-  { id: 'trailer', label: 'Trailer', href: '#trailer', icon: '🎬' },
-  { id: 'temario', label: 'Temario', href: '#temario', icon: '⚖️' },
-  { id: 'fundadora', label: 'Roxana', href: '#fundadora', icon: '👑' },
-  { id: 'precios', label: 'Precios', href: '#precios', icon: '💳' },
-];
+import { useLanguage, DICTIONARY } from '@/lib/i18n';
 
 export function PoufBottomNav() {
   const [activeTab, setActiveTab] = useState<string>('trailer');
+  const { lang } = useLanguage();
+  const t = DICTIONARY[lang].bottomNav;
+
+  const tabs = [
+    { id: 'trailer', label: t.trailer, href: '#trailer', icon: '🎬' },
+    { id: 'temario', label: t.syllabus, href: '#temario', icon: '⚖️' },
+    { id: 'fundadora', label: t.founder, href: '#fundadora', icon: '👑' },
+    { id: 'precios', label: t.pricing, href: '#precios', icon: '💳' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,7 +37,7 @@ export function PoufBottomNav() {
       className="md:hidden fixed bottom-3 inset-x-3 z-40 bg-white/95 backdrop-blur-md rounded-[28px] p-1.5 cushion-card border border-pink-100 grid grid-flow-col auto-cols-fr gap-1 shadow-2xl"
       aria-label="Navegación Móvil Rápida"
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <a
@@ -66,7 +62,7 @@ export function PoufBottomNav() {
         className="flex flex-col items-center justify-center py-2 px-1 min-h-[50px] rounded-[20px] font-pouf text-[11px] font-black bg-[#E31B6D] text-white cushion-control active:translate-y-[2px] transition-all"
       >
         <span className="text-base leading-none mb-1">✦</span>
-        <span className="leading-none">Unirme</span>
+        <span className="leading-none">{lang === 'es' ? 'Unirme' : 'Join'}</span>
       </a>
     </nav>
   );

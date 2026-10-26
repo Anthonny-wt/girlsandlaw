@@ -1,19 +1,23 @@
 import { Card } from './surface';
 import { Blob } from './media';
 import { Eyebrow, Heading, Text } from './text';
+import { useLanguage, DICTIONARY } from '@/lib/i18n';
 
 export function PoufFeatures() {
+  const { lang } = useLanguage();
+  const t = DICTIONARY[lang].features;
+
   return (
     <section id="metodologia" className="py-20 sm:py-28 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-16">
-        <Eyebrow>Ingeniería del Aprendizaje</Eyebrow>
+        <Eyebrow>{t.eyebrow}</Eyebrow>
         <Heading level={2} className="mt-2 text-ink">
-          Cada detalle diseñado para transformar tu carrera.
+          {t.title}
         </Heading>
         <div className="mt-3">
           <Text muted size="lg">
-            Combinamos cinematografía inmersiva, rigor procesal de primera línea y comunidad exclusiva.
+            {t.description}
           </Text>
         </div>
       </div>
@@ -28,19 +32,18 @@ export function PoufFeatures() {
                 🎬
               </Blob>
               <Heading level={2} className="text-ink">
-                Producción en salas de audiencias reales.
+                {t.card1.title}
               </Heading>
               <div className="mt-3">
                 <Text size="md" muted>
-                  Sin salones genéricos ni diapositivas monótonas. Aprende la acústica del tribunal,
-                  el manejo de la distancia con el juez y el dominio espacial que impone respeto desde el primer segundo.
+                  {t.card1.desc}
                 </Text>
               </div>
             </div>
 
             <div className="mt-8 pt-5 border-t border-pink-100 flex items-center justify-between text-xs font-black text-muted">
-              <span>✦ 4K Ultra HD · Masterclass Cinema</span>
-              <span className="text-[#E31B6D]">12 Módulos Clínicos</span>
+              <span>{t.card1.tag1}</span>
+              <span className="text-[#E31B6D]">{t.card1.tag2}</span>
             </div>
           </Card>
         </div>
@@ -53,17 +56,17 @@ export function PoufFeatures() {
                 📂
               </Blob>
               <Heading level={3} className="text-ink">
-                El Vault Procesal
+                {t.card2.title}
               </Heading>
               <div className="mt-3">
                 <Text size="sm" muted>
-                  15 modelos procesales editables en Word: alegatos de apertura, matrices para interrogar testigos y propuestas de honorarios.
+                  {t.card2.desc}
                 </Text>
               </div>
             </div>
 
             <div className="mt-6 p-3 rounded-control bg-white cushion-row font-mono text-[11px] font-bold text-ink">
-              📄 alegato_apertura_pro.docx
+              {t.card2.sample}
             </div>
           </Card>
         </div>
@@ -76,11 +79,11 @@ export function PoufFeatures() {
                 👑
               </Blob>
               <Heading level={3} className="text-ink">
-                Comunidad VIP Perpetua
+                {t.card3.title}
               </Heading>
               <div className="mt-3">
                 <Text size="sm" muted>
-                  Pertenecerás al círculo de abogadas más activo de Latinoamérica. Derivación de casos, alianzas y networking auténtico.
+                  {t.card3.desc}
                 </Text>
               </div>
             </div>
@@ -91,7 +94,7 @@ export function PoufFeatures() {
                 <div className="w-8 h-8 rounded-full bg-yellow cushion-control flex items-center justify-center text-[10px] font-black text-ink">AC</div>
                 <div className="w-8 h-8 rounded-full bg-mint cushion-control flex items-center justify-center text-[10px] font-black text-ink">KW</div>
               </div>
-              <span className="text-xs font-bold text-muted">+5,000 juristas conectadas</span>
+              <span className="text-xs font-bold text-muted">{t.card3.stat}</span>
             </div>
           </Card>
         </div>
@@ -104,23 +107,23 @@ export function PoufFeatures() {
                 ⚖️
               </Blob>
               <Heading level={2} className="text-ink">
-                Simulaciones de juicio con feedback en vivo.
+                {t.card4.title}
               </Heading>
               <div className="mt-3">
                 <Text size="md" muted>
-                  No basta con saber la ley: debes saber responder bajo fuego. Practicarás objeciones en milisegundos, control de testigos difíciles y alegatos orales con evaluación experta.
+                  {t.card4.desc}
                 </Text>
               </div>
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-4">
               <div className="p-4 rounded-control bg-[#FFF5F9] cushion-row">
-                <p className="text-xl font-black font-pouf text-[#E31B6D]">4 Sesiones</p>
-                <p className="text-xs font-bold text-muted mt-0.5">En tiempo real</p>
+                <p className="text-xl font-black font-pouf text-[#E31B6D]">{t.card4.stat1Num}</p>
+                <p className="text-xs font-bold text-muted mt-0.5">{t.card4.stat1Label}</p>
               </div>
               <div className="p-4 rounded-control bg-[#FFF5F9] cushion-row">
-                <p className="text-xl font-black font-pouf text-[#E31B6D]">1 a 1</p>
-                <p className="text-xs font-bold text-muted mt-0.5">Revisión clínica experta</p>
+                <p className="text-xl font-black font-pouf text-[#E31B6D]">{t.card4.stat2Num}</p>
+                <p className="text-xs font-bold text-muted mt-0.5">{t.card4.stat2Label}</p>
               </div>
             </div>
           </Card>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage, DICTIONARY } from '@/lib/i18n';
 
 interface FounderHeroCardProps {
   photoSrc?: string;
@@ -11,12 +12,17 @@ interface FounderHeroCardProps {
 export function FounderHeroCard({
   photoSrc = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
   name = 'Roxana Rivera',
-  role = 'FUNDADORA & DIRECTORA LEGAL',
-  bio = 'Redefiniendo el ejercicio del derecho desde la autenticidad, la excelencia procesal y la sororidad para juristas de alto impacto.',
+  role,
+  bio,
   className = '',
 }: FounderHeroCardProps) {
   const [liked, setLiked] = useState<boolean>(false);
   const [followersCount, setFollowersCount] = useState<number>(18420);
+  const { lang } = useLanguage();
+  const t = DICTIONARY[lang].founderCard;
+
+  const currentRole = role || t.role;
+  const currentBio = bio || t.bio;
 
   const toggleLike = () => {
     setLiked(!liked);
@@ -37,7 +43,7 @@ export function FounderHeroCard({
           loading="eager"
         />
 
-        {/* Script Text on Top-Left (matching screenshot: "Good Design Brighter People") */}
+        {/* Script Text on Top-Left */}
         <div className="absolute top-5 left-5 z-10 leading-tight">
           <p className="font-serif italic text-base font-bold text-ink drop-shadow-xs">
             Good Law
@@ -46,7 +52,7 @@ export function FounderHeroCard({
             Brighter Women
           </p>
           <span className="inline-block mt-1 px-2.5 py-0.5 rounded-pill bg-white/90 backdrop-blur-md text-[9px] font-black uppercase tracking-wider text-[#E31B6D] border border-white/60 shadow-2xs">
-            ✦ Leader 2026
+            ✦ {t.tag}
           </span>
         </div>
 
@@ -105,13 +111,13 @@ export function FounderHeroCard({
 
           {/* Subtitle / Role */}
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#E31B6D] mt-0.5 font-pouf">
-            {role}
+            {currentRole}
           </p>
         </div>
 
         {/* Bio Copy */}
         <p className="text-xs font-bold text-muted leading-relaxed font-pouf">
-          {bio}
+          {currentBio}
         </p>
 
         {/* Stats Row with 3 Columns (18K Followers · 320 Projects · 4.9 Rating) */}
@@ -120,29 +126,29 @@ export function FounderHeroCard({
             <p className="text-sm font-black text-ink">
               {(followersCount / 1000).toFixed(1)}K
             </p>
-            <p className="text-[10px] font-bold text-muted mt-0.5">Seguidoras</p>
+            <p className="text-[10px] font-bold text-muted mt-0.5">{t.followers}</p>
           </div>
           <div className="border-x border-pink-100">
             <p className="text-sm font-black text-ink">+12h</p>
-            <p className="text-[10px] font-bold text-muted mt-0.5">Clínica 4K</p>
+            <p className="text-[10px] font-bold text-muted mt-0.5">{t.clinical}</p>
           </div>
           <div>
             <p className="text-sm font-black text-ink flex items-center justify-center gap-0.5">
               <span className="text-amber-400">★</span> 4.9
             </p>
-            <p className="text-[10px] font-bold text-muted mt-0.5">Calificación</p>
+            <p className="text-[10px] font-bold text-muted mt-0.5">{t.rating}</p>
           </div>
         </div>
 
-        {/* Follow / Connect CTA Button (matching screenshot: wide pill with arrow) */}
+        {/* Follow / Connect CTA Button */}
         <div className="pt-1">
           <a
             href="https://instagram.com/roxanamriverag"
             target="_blank"
             rel="noreferrer"
-            className="w-full py-3.5 px-6 rounded-pill bg-[#2D1E42] hover:bg-[#E31B6D] text-white font-pouf font-black text-xs flex items-center justify-center gap-2 transition-all duration-200 cushion-control active:cushion-control-active active:translate-y-[1px] group"
+            className="w-full py-3.5 px-6 rounded-pill bg-[#2D1E42] hover:bg-[#E31B6D] text-white font-pouf font-black text-xs flex items-center justify-center gap-2 transition-all duration-200 cushion-control active:cushion-control-active active:translate-y-[1px] group cursor-pointer"
           >
-            <span>Conectar con Roxana</span>
+            <span>{t.cta}</span>
             <span className="transition-transform duration-200 group-hover:translate-x-1 font-mono">
               ⟶
             </span>

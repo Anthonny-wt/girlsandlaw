@@ -1,6 +1,6 @@
 ---
 import '@/styles/global.css';
-import PoufFooter from '@/components/pouf/PoufFooter.astro';
+import { PoufFooter } from '@/components/pouf/PoufFooter';
 
 interface Props {
   title?: string;
@@ -21,7 +21,7 @@ const {
     {/* Favicons / Tab Icons */}
     <link rel="icon" type="image/webp" href="/favicon.webp" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/logogirlsandlaw.webp" />
+    <link rel="apple-touch-icon" href="/logogirlsandlaw-nobg.webp" />
     <meta name="generator" content={Astro.generator} />
 
     {/* Primary SEO */}
@@ -46,6 +46,6 @@ const {
     <main class="flex-1">
       <slot />
     </main>
-    <PoufFooter />
+    <PoufFooter client:load />
   </body>
 </html>

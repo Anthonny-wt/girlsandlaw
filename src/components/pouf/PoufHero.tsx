@@ -4,11 +4,14 @@ import { Heading, Highlight, Text } from './text';
 import { Button } from './Button';
 import { Card } from './surface';
 import { FounderHeroCard } from './FounderHeroCard';
+import { useLanguage, DICTIONARY } from '@/lib/i18n';
 
 export function PoufHero() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(23); // percentage
   const [currentChapter, setCurrentChapter] = useState<string>('Capítulo 2: Presencia Escénica & Voz');
+  const { lang } = useLanguage();
+  const t = DICTIONARY[lang].hero;
 
   // Simulated video playback when playing
   useEffect(() => {
@@ -35,23 +38,21 @@ export function PoufHero() {
           {/* 1st-Pouf Pill Badge */}
           <div className="flex justify-center lg:justify-start">
             <Badge tone="pink" className="cushion-control-active">
-              ✦ Masterclass Exclusiva · Nueva Edición 2026
+              {t.badge}
             </Badge>
           </div>
 
           {/* 1st-Pouf Heading with Highlights */}
           <Heading level={1} className="font-black text-ink text-left">
-            Litigio de <Highlight tone="pink">Alto Impacto</Highlight>.<br />
-            <span className="font-serif italic font-normal">Poder,</span>{' '}
-            <Highlight tone="yellow">Argumentación</Highlight> &amp; Autenticidad.
+            {t.title1} <Highlight tone="pink">{t.titleHighlight1}</Highlight>.<br />
+            <span className="font-serif italic font-normal">{t.title2}</span>{' '}
+            <Highlight tone="yellow">{t.titleHighlight2}</Highlight> {t.title3}
           </Heading>
 
           {/* Description in friendly 1st-Pouf Text */}
           <div className="max-w-xl mx-auto lg:mx-0">
             <Text size="lg" muted className="font-bold text-muted">
-              Aprende el arte de persuadir en tribunales, construir una teoría del caso
-              imbatible y proyectar una presencia magnética. La formación clínica de élite que la
-              facultad nunca te enseñó.
+              {t.description}
             </Text>
           </div>
 
@@ -64,7 +65,7 @@ export function PoufHero() {
                 document.getElementById('precios')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              Comenzar Masterclass →
+              {t.ctaPrimary}
             </Button>
             <Button
               size="lg"
@@ -74,25 +75,25 @@ export function PoufHero() {
                 document.getElementById('video-card')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              {isPlaying ? '⏸ Pausar muestra' : '▶ Ver clase de muestra'}
+              {isPlaying ? '⏸ Pausar muestra' : `▶ ${t.ctaSecondary}`}
             </Button>
           </div>
 
           {/* Guarantee & Pricing footnote */}
           <p className="text-xs font-bold text-muted">
-            Inversión desde $39 USD/mes · 14 días de garantía incondicional
+            {t.guarantee}
           </p>
 
           {/* Trust Highlights Row */}
           <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-2 text-xs font-black text-ink">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-white cushion-row">
-              🏛️ Salas de audiencia reales
+              🏛️ {t.pills.courtrooms}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-white cushion-row">
-              📄 15 modelos en Word
+              📄 {t.pills.models}
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-white cushion-row">
-              👑 Mentoría con Roxana Rivera
+              👑 {t.pills.mentorship}
             </span>
           </div>
         </div>

@@ -4,12 +4,13 @@ import { PoufNavbar } from '@/components/pouf/PoufNavbar';
 import { PoufHero } from '@/components/pouf/PoufHero';
 import { PoufFeatures } from '@/components/pouf/PoufFeatures';
 import { PoufSyllabus } from '@/components/pouf/PoufSyllabus';
-import FounderSection from '@/components/sections/FounderSection.astro';
+import { FounderSection } from '@/components/sections/FounderSection';
 import { PoufPricing } from '@/components/pouf/PoufPricing';
 import { PoufFAQ } from '@/components/pouf/PoufFAQ';
 import { PoufBottomCTA } from '@/components/pouf/PoufBottomCTA';
 import { PoufToast } from '@/components/pouf/PoufToast';
 import { PoufBottomNav } from '@/components/pouf/PoufBottomNav';
+import { SpotifyFloatingPlayer } from '@/components/pouf/SpotifyFloatingPlayer';
 ---
 
 <Layout
@@ -31,7 +32,7 @@ import { PoufBottomNav } from '@/components/pouf/PoufBottomNav';
     <PoufSyllabus client:visible />
 
     {/* 4. Instructor Leadership (Roxana Rivera) */}
-    <FounderSection />
+    <FounderSection client:visible />
 
     {/* 5. 1st-Pouf Pricing Cards with Segmented Switcher */}
     <PoufPricing client:visible />
@@ -45,6 +46,9 @@ import { PoufBottomNav } from '@/components/pouf/PoufBottomNav';
 
   {/* 1st-Pouf Realtime Social Proof Toast */}
   <PoufToast client:load />
+
+  {/* Spotify Podcast Floating Player (triggered from navbar Spotify icon) */}
+  <SpotifyFloatingPlayer client:load />
 
   {/* 1st-Pouf Mobile Bottom Navigation */}
   <PoufBottomNav client:load />

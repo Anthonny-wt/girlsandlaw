@@ -6,13 +6,13 @@ interface LogoProps {
 export default function Logo({ className = '', variant = 'navbar' }: LogoProps) {
   return (
     <a href="/" className={`flex items-center gap-3 group shrink-0 ${className}`}>
-      {/* Official Girls & Law Logo in WebP */}
+      {/* Official Girls & Law Logo in WebP (No Background) */}
       <img
-        src="/logogirlsandlaw.webp"
+        src="/logogirlsandlaw-nobg.webp"
         alt="Logo Girls & Law"
         width="48"
         height="48"
-        className="w-12 h-12 object-contain rounded-full shadow-xs transition-transform duration-200 group-hover:scale-105"
+        className="w-12 h-12 object-contain filter drop-shadow-xs transition-transform duration-200 group-hover:scale-105"
         loading="eager"
       />
 

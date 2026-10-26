@@ -1,13 +1,17 @@
 import { CTA } from './cta';
 import { Button } from './Button';
+import { useLanguage, DICTIONARY } from '@/lib/i18n';
 
 export function PoufBottomCTA() {
+  const { lang } = useLanguage();
+  const t = DICTIONARY[lang].bottomCTA;
+
   return (
     <section className="py-16 sm:py-24 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <CTA
         tone="pink"
-        title="Tu voz procesal merece ser escuchada con fuerza."
-        description="No necesitas esperar años ni soportar la arrogancia de los métodos tradicionales. Adquiere hoy la confianza, la técnica y el respaldo de Girls & Law."
+        title={t.title}
+        description={t.description}
         action={
           <>
             <Button
@@ -17,7 +21,7 @@ export function PoufBottomCTA() {
                 document.getElementById('precios')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              Asegurar Mi Plaza Ahora →
+              {t.ctaPrimary}
             </Button>
             <Button
               size="lg"
@@ -26,7 +30,7 @@ export function PoufBottomCTA() {
                 document.getElementById('temario')?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              Revisar Plan de Estudios
+              {t.ctaSecondary}
             </Button>
           </>
         }

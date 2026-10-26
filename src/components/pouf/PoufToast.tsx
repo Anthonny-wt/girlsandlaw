@@ -83,7 +83,7 @@ export function PoufToast() {
   return (
     <aside
       aria-label="Notificación en vivo"
-      className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 max-w-[340px] pointer-events-auto transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+      className="hidden sm:block fixed bottom-6 left-6 z-40 max-w-[340px] pointer-events-auto transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
     >
       <div
         className={`flex items-center gap-3 p-3.5 sm:p-4 rounded-[22px] text-ink font-pouf shadow-2xl ${toneBg}`}
