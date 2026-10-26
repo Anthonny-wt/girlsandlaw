@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Sparkles, Bookmark, Award, ChevronRight } from 'lucide-react';
 

@@ -1,9 +1,10 @@
-import { cn } from '@/lib/cn'
+import { cn } from '@/lib/cn';
+import type { ReactNode } from 'react';
 
 interface BadgeProps {
-  children: React.ReactNode
-  className?: string
-  variant?: 'pink' | 'dark' | 'outline'
+  children: ReactNode;
+  className?: string;
+  variant?: 'pink' | 'dark' | 'outline';
 }
 
 export default function Badge({ children, className, variant = 'pink' }: BadgeProps) {
