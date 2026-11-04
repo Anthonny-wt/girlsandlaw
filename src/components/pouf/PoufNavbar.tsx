@@ -143,6 +143,15 @@ export function PoufNavbar() {
             </button>
           </div>
 
+          {/* Campus / Dashboard Portal */}
+          <a
+            href="/dashboard"
+            title="Panel de Gestión de Cursos & Campus"
+            className="hidden sm:inline-flex items-center gap-1 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-black text-ink hover:text-[#E31B6D] hover:bg-[#FFF0F6] border border-pink-200/90 transition-all cursor-pointer shadow-2xs"
+          >
+            <span>{lang === 'es' ? 'Campus' : 'Portal'}</span>
+          </a>
+
           {/* CTA Inscribirme Button */}
           <Button
             size="sm"

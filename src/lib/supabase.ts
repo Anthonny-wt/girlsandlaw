@@ -1,0 +1,1170 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Environment variables with fallback
+const supabaseUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_SUPABASE_URL) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.NEXT_PUBLIC_SUPABASE_URL) ||
+  'https://gfyqhlaytcrpbidgrijj.supabase.co';
+
+const supabaseAnonKey =
+  (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
+  'sb_publishable_Y2igeCFENSoXvoITGllnQQ_8begb662';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
+
+export type UserRole = 'admin' | 'profesora' | 'alumna';
+export type UserLevel = 'inicial' | 'pro' | 'vip';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  role: UserRole;
+  level: UserLevel;
+  phone?: string;
+  created_at?: string;
+}
+
+export interface Lesson {
+  id: string;
+  module_id: string;
+  course_id: string;
+  title: string;
+  description?: string;
+  duration: string;
+  video_url: string;
+  storage_path?: string;
+  order_index: number;
+  is_free_preview?: boolean;
+  notes?: string;
+}
+
+export interface CourseModule {
+  id: string;
+  course_id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  lessons: Lesson[];
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  instructor: string;
+  price: number;
+  compare_at_price?: number;
+  category: 'Litigio' | 'Penal' | 'Oralidad' | 'Negociación' | 'Marca Personal' | 'Corporativo';
+  level: 'Inicial' | 'Intermedio' | 'Avanzado' | 'Clínico VIP';
+  modality: 'Asincrónico' | 'En Vivo' | 'Híbrido';
+  duration: string;
+  modules_count: number;
+  lessons_count: number;
+  students_count: number;
+  rating: number;
+  status: 'published' | 'draft' | 'archived';
+  cover_image: string;
+  trailer_url?: string;
+  featured?: boolean;
+  modules?: CourseModule[];
+  created_at?: string;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  course_title: string;
+  amount_paid: number;
+  enrolled_at: string;
+  progress: number;
+  status: 'Activa' | 'Completado' | 'En Pausa';
+  city: string;
+}
+
+// Sample video URLs (high quality legal / lecture streams for testing)
+const SAMPLE_VIDEOS = {
+  litigio1: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  litigio2: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  litigio3: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+};
+
+// Seed courses with structured modules and lessons with video references
+export const SEED_COURSES: Course[] = [
+  {
+    id: 'course-1',
+    title: 'Litigio de Alto Impacto: Poder, Argumentación & Autenticidad',
+    slug: 'litigio-de-alto-impacto',
+    description:
+      'La formación clínica de élite para dominar tribunales con autoridad, persuasión escénica y una teoría del caso imbatible.',
+    instructor: 'Roxana Rivera',
+    price: 149,
+    compare_at_price: 249,
+    category: 'Litigio',
+    level: 'Clínico VIP',
+    modality: 'Híbrido',
+    duration: '12 horas',
+    modules_count: 4,
+    lessons_count: 12,
+    students_count: 248,
+    rating: 4.9,
+    status: 'published',
+    cover_image:
+      'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=800&auto=format&fit=crop',
+    featured: true,
+    trailer_url: SAMPLE_VIDEOS.litigio1,
+    created_at: new Date('2026-01-15').toISOString(),
+    modules: [
+      {
+        id: 'mod-1-1',
+        course_id: 'course-1',
+        title: 'Módulo 1: Arquitectura de la Teoría del Caso',
+        description: 'Cómo construir una narrativa fáctica, jurídica y probatoria impenetrable.',
+        order_index: 1,
+        lessons: [
+          {
+            id: 'les-1-1',
+            module_id: 'mod-1-1',
+            course_id: 'course-1',
+            title: 'Clase 01: El Hecho Relevante vs. La Paja Procesal',
+            duration: '18 min',
+            video_url: SAMPLE_VIDEOS.litigio1,
+            storage_path: 'course-videos/litigio/clase-01-hecho-relevante.mp4',
+            order_index: 1,
+            is_free_preview: true,
+            notes: 'Aprende a depurar los hechos no controvertidos y enfocar el 100% de la energía del tribunal en tu proposición fáctica central.',
+          },
+          {
+            id: 'les-1-2',
+            module_id: 'mod-1-1',
+            course_id: 'course-1',
+            title: 'Clase 02: Matriz Fáctico-Jurídica en Word',
+            duration: '24 min',
+            video_url: SAMPLE_VIDEOS.litigio2,
+            storage_path: 'course-videos/litigio/clase-02-matriz-factica.mp4',
+            order_index: 2,
+            is_free_preview: false,
+            notes: 'Estructuración de la tabla de verificación de prueba directa e indiciaria.',
+          },
+          {
+            id: 'les-1-3',
+            module_id: 'mod-1-1',
+            course_id: 'course-1',
+            title: 'Clase 03: Identificación Temprana de Debilidades de la Contraparte',
+            duration: '21 min',
+            video_url: SAMPLE_VIDEOS.litigio3,
+            storage_path: 'course-videos/litigio/clase-03-debilidades.mp4',
+            order_index: 3,
+            is_free_preview: false,
+            notes: 'Anticipación y neutralización del contraargumento en el alegato de apertura.',
+          },
+        ],
+      },
+      {
+        id: 'mod-1-2',
+        course_id: 'course-1',
+        title: 'Módulo 2: Alegatos de Apertura Memorables',
+        description: 'El arte de captar la atención del juez en los primeros 120 segundos.',
+        order_index: 2,
+        lessons: [
+          {
+            id: 'les-1-4',
+            module_id: 'mod-1-2',
+            course_id: 'course-1',
+            title: 'Clase 04: El Hook Inicial y la Frase Fuerza',
+            duration: '25 min',
+            video_url: SAMPLE_VIDEOS.litigio1,
+            storage_path: 'course-videos/litigio/clase-04-hook-inicial.mp4',
+            order_index: 4,
+            is_free_preview: false,
+            notes: 'Uso de pausas, cadencia de voz y contacto visual con el estrado.',
+          },
+          {
+            id: 'les-1-5',
+            module_id: 'mod-1-2',
+            course_id: 'course-1',
+            title: 'Clase 05: El Relato Cronológico vs. Temático',
+            duration: '30 min',
+            video_url: SAMPLE_VIDEOS.litigio2,
+            storage_path: 'course-videos/litigio/clase-05-relato-tematico.mp4',
+            order_index: 5,
+            is_free_preview: false,
+            notes: 'Cuándo conviene estructurar el alegato por temas y cuándo por línea de tiempo.',
+          },
+        ],
+      },
+      {
+        id: 'mod-1-3',
+        course_id: 'course-1',
+        title: 'Módulo 3: Contra-interrogatorio Quirúrgico',
+        description: 'Técnicas avanzadas para interrogar peritos y testigos hostiles.',
+        order_index: 3,
+        lessons: [
+          {
+            id: 'les-1-6',
+            module_id: 'mod-1-3',
+            course_id: 'course-1',
+            title: 'Clase 06: La Regla de Oro: Solo Preguntas Asertivas',
+            duration: '22 min',
+            video_url: SAMPLE_VIDEOS.litigio3,
+            storage_path: 'course-videos/litigio/clase-06-preguntas-asertivas.mp4',
+            order_index: 6,
+            is_free_preview: false,
+            notes: 'Nunca hagas una pregunta cuya respuesta no conozcas con antelación.',
+          },
+          {
+            id: 'les-1-7',
+            module_id: 'mod-1-3',
+            course_id: 'course-1',
+            title: 'Clase 07: Impugnación de Credibilidad con Declaración Previa',
+            duration: '28 min',
+            video_url: SAMPLE_VIDEOS.litigio1,
+            storage_path: 'course-videos/litigio/clase-07-impugnacion.mp4',
+            order_index: 7,
+            is_free_preview: false,
+            notes: 'Técnica de C.A.C.A.: Comprometer, Acreditar, Confrontar y Acabar.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-2',
+    title: 'El Vault Procesal: Redacción de Alegatos y Demandas Ganadoras',
+    slug: 'el-vault-procesal',
+    description:
+      'Acceso y taller práctico a 15 modelos procesales de alta gama en Word con matrices de hechos y pruebas irrebatibles.',
+    instructor: 'Roxana Rivera',
+    price: 89,
+    compare_at_price: 139,
+    category: 'Litigio',
+    level: 'Intermedio',
+    modality: 'Asincrónico',
+    duration: '6 horas',
+    modules_count: 3,
+    lessons_count: 8,
+    students_count: 182,
+    rating: 4.8,
+    status: 'published',
+    cover_image:
+      'https://images.unsplash.com/photo-1450133064473-71024230f91b?q=80&w=800&auto=format&fit=crop',
+    featured: false,
+    trailer_url: SAMPLE_VIDEOS.litigio2,
+    created_at: new Date('2026-02-01').toISOString(),
+    modules: [
+      {
+        id: 'mod-2-1',
+        course_id: 'course-2',
+        title: 'Módulo 1: Diseño Visual y Arquitectura de la Demanda',
+        order_index: 1,
+        lessons: [
+          {
+            id: 'les-2-1',
+            module_id: 'mod-2-1',
+            course_id: 'course-2',
+            title: 'Clase 01: El Resumen Ejecutivo en la Primera Página',
+            duration: '19 min',
+            video_url: SAMPLE_VIDEOS.litigio2,
+            storage_path: 'course-videos/vault/clase-01-resumen-ejecutivo.mp4',
+            order_index: 1,
+            is_free_preview: true,
+            notes: 'Por qué los jueces agradecen una síntesis clara antes del petitorio extenso.',
+          },
+          {
+            id: 'les-2-2',
+            module_id: 'mod-2-1',
+            course_id: 'course-2',
+            title: 'Clase 02: Plantillas y Formato Word Descargable',
+            duration: '22 min',
+            video_url: SAMPLE_VIDEOS.litigio3,
+            storage_path: 'course-videos/vault/clase-02-plantillas-word.mp4',
+            order_index: 2,
+            is_free_preview: false,
+            notes: 'Configuración tipográfica, márgenes de legibilidad y numeración jurídica.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-3',
+    title: 'Técnica de Interrogatorio y Objeciones en Audiencia Real',
+    slug: 'interrogatorio-y-objeciones',
+    description:
+      'Aprende a formular preguntas cerradas que acorralan, a controlar testigos hostiles y a objetar en 0.5 segundos con base legal.',
+    instructor: 'Roxana Rivera',
+    price: 120,
+    compare_at_price: 180,
+    category: 'Oralidad',
+    level: 'Avanzado',
+    modality: 'En Vivo',
+    duration: '8 horas',
+    modules_count: 4,
+    lessons_count: 10,
+    students_count: 134,
+    rating: 5.0,
+    status: 'published',
+    cover_image:
+      'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=800&auto=format&fit=crop',
+    featured: false,
+    trailer_url: SAMPLE_VIDEOS.litigio3,
+    created_at: new Date('2026-02-14').toISOString(),
+    modules: [
+      {
+        id: 'mod-3-1',
+        course_id: 'course-3',
+        title: 'Módulo 1: El Reflejo de la Objeción Inmediata',
+        order_index: 1,
+        lessons: [
+          {
+            id: 'les-3-1',
+            module_id: 'mod-3-1',
+            course_id: 'course-3',
+            title: 'Clase 01: Las 7 Objeciones Prohibidas y Cuándo Levantarse',
+            duration: '26 min',
+            video_url: SAMPLE_VIDEOS.litigio1,
+            storage_path: 'course-videos/objeciones/clase-01-siete-objeciones.mp4',
+            order_index: 1,
+            is_free_preview: true,
+            notes: 'Preguntas capciosas, sugestivas en directo e impertinentes.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-4',
+    title: 'Marca Personal Jurídica y Negociación de Honorarios Premium',
+    slug: 'marca-personal-honorarios',
+    description:
+      'Aprende a cobrar por valor, negociar acuerdos extrajudiciales con el método Harvard y construir un prestigio intachable en redes.',
+    instructor: 'Dra. Camila Soto',
+    price: 95,
+    compare_at_price: 150,
+    category: 'Marca Personal',
+    level: 'Intermedio',
+    modality: 'Asincrónico',
+    duration: '5 horas',
+    modules_count: 3,
+    lessons_count: 8,
+    students_count: 96,
+    rating: 4.9,
+    status: 'draft',
+    cover_image:
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
+    featured: false,
+    trailer_url: SAMPLE_VIDEOS.litigio2,
+    created_at: new Date('2026-03-01').toISOString(),
+    modules: [],
+  },
+];
+
+export const SEED_STUDENTS: Student[] = [
+  {
+    id: 'stu-1',
+    name: 'Valentina Morales',
+    email: 'valentina.morales@lexcolombia.com',
+    course_title: 'Litigio de Alto Impacto',
+    amount_paid: 149,
+    enrolled_at: 'Hace 2 días',
+    progress: 85,
+    status: 'Activa',
+    city: 'Bogotá, Colombia',
+  },
+  {
+    id: 'stu-2',
+    name: 'Dra. Camila Soto',
+    email: 'camila.soto@juridicosantiago.cl',
+    course_title: 'Litigio de Alto Impacto',
+    amount_paid: 149,
+    enrolled_at: 'Hace 5 días',
+    progress: 100,
+    status: 'Completado',
+    city: 'Santiago, Chile',
+  },
+  {
+    id: 'stu-3',
+    name: 'Andrea Quintana',
+    email: 'andrea.quintana@estudiolegal.pe',
+    course_title: 'El Vault Procesal',
+    amount_paid: 89,
+    enrolled_at: 'Hace 1 semana',
+    progress: 60,
+    status: 'Activa',
+    city: 'Lima, Perú',
+  },
+  {
+    id: 'stu-4',
+    name: 'Lic. Mariana Rivas',
+    email: 'mariana.rivas@defensamexico.mx',
+    course_title: 'Interrogatorio y Objeciones',
+    amount_paid: 120,
+    enrolled_at: 'Hace 2 semanas',
+    progress: 40,
+    status: 'Activa',
+    city: 'CDMX, México',
+  },
+  {
+    id: 'stu-5',
+    name: 'Sofía Benítez',
+    email: 'sofia.benitez@justicia.ar',
+    course_title: 'Litigio de Alto Impacto',
+    amount_paid: 149,
+    enrolled_at: 'Hace 3 semanas',
+    progress: 100,
+    status: 'Completado',
+    city: 'Buenos Aires, Argentina',
+  },
+];
+
+// Fetch user profile with role and level from Supabase
+export async function getUserProfile(userId: string, email?: string): Promise<UserProfile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data as UserProfile;
+    }
+  } catch {
+    // Table not created yet
+  }
+
+  // Fallback: If user is the main owner or admin
+  const isSuperAdmin = email === 'anthonnywt@gmail.com';
+  return {
+    id: userId,
+    email: email || '',
+    full_name: email?.split('@')[0] || 'Usuario',
+    role: isSuperAdmin ? 'admin' : 'alumna',
+    level: isSuperAdmin ? 'vip' : 'inicial',
+  };
+}
+
+// Update profile role / level (admin only)
+export async function updateUserRole(userId: string, role: UserRole, level: UserLevel): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role, level, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+const LOCAL_STORAGE_USERS_KEY = 'girls_and_law_users_v2';
+
+// Create a new user account / profile
+export async function createUserAccount(userData: {
+  email: string;
+  full_name: string;
+  password?: string;
+  role: UserRole;
+  level: UserLevel;
+  phone?: string;
+}): Promise<UserProfile | null> {
+  const email = userData.email.trim().toLowerCase();
+  const fullName = userData.full_name.trim();
+
+  // Try creating in Supabase Auth via secondary isolated client so admin is NOT logged out
+  try {
+    const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const { data: authData, error: authErr } = await tempClient.auth.signUp({
+      email,
+      password: userData.password || 'GirlsAndLaw2026!',
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (!authErr && authData.user) {
+      const userProfile: UserProfile = {
+        id: authData.user.id,
+        email,
+        full_name: fullName,
+        role: userData.role,
+        level: userData.level,
+        phone: userData.phone || '',
+        created_at: new Date().toISOString(),
+      };
+
+      await supabase.from('profiles').upsert(userProfile);
+      return userProfile;
+    }
+  } catch {
+    // fallback
+  }
+
+  // Fallback insert if profiles allows or offline
+  const fallbackId =
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`;
+  const localProfile: UserProfile = {
+    id: fallbackId,
+    email,
+    full_name: fullName,
+    role: userData.role,
+    level: userData.level,
+    phone: userData.phone || '',
+    created_at: new Date().toISOString(),
+  };
+
+  try {
+    await supabase.from('profiles').insert(localProfile);
+  } catch {
+    // offline
+  }
+
+  if (typeof window !== 'undefined') {
+    const current = await getAllProfiles();
+    const updated = [localProfile, ...current.filter((u) => u.id !== localProfile.id)];
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updated));
+  }
+
+  return localProfile;
+}
+
+// Update complete user profile
+export async function updateUserProfile(profileData: {
+  id: string;
+  full_name: string;
+  role: UserRole;
+  level: UserLevel;
+  phone?: string;
+}): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    const current = await getAllProfiles();
+    const updated = current.map((u) =>
+      u.id === profileData.id
+        ? {
+            ...u,
+            full_name: profileData.full_name,
+            role: profileData.role,
+            level: profileData.level,
+            phone: profileData.phone,
+          }
+        : u
+    );
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updated));
+  }
+
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: profileData.full_name,
+        role: profileData.role,
+        level: profileData.level,
+        phone: profileData.phone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profileData.id);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Delete user account / profile
+export async function deleteUserProfile(userId: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    const current = await getAllProfiles();
+    const updated = current.filter((u) => u.id !== userId);
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updated));
+  }
+
+  try {
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Get all registered users from profiles
+export async function getAllProfiles(): Promise<UserProfile[]> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data as UserProfile[];
+    }
+  } catch {
+    // table not ready
+  }
+
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch {
+        // fallback
+      }
+    }
+  }
+
+  const initial = [
+    {
+      id: 'e3bdf9ed-c289-4624-badf-7f26bae14ed8',
+      email: 'anthonnywt@gmail.com',
+      full_name: 'Anthonny (Super Admin)',
+      role: 'admin' as UserRole,
+      level: 'vip' as UserLevel,
+    },
+  ];
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(initial));
+  }
+
+  return initial;
+}
+
+const LOCAL_STORAGE_COURSES_KEY = 'girls_and_law_courses_v2';
+
+export async function getCourses(): Promise<Course[]> {
+  try {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data as Course[];
+    }
+  } catch {
+    // table not created yet
+  }
+
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch {
+        // fallback
+      }
+    }
+    localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(SEED_COURSES));
+  }
+  return SEED_COURSES;
+}
+
+export async function saveCourse(course: Course): Promise<Course> {
+  if (typeof window !== 'undefined') {
+    const current = await getCourses();
+    const existingIndex = current.findIndex((c) => c.id === course.id);
+    let updated: Course[];
+    if (existingIndex >= 0) {
+      updated = [...current];
+      updated[existingIndex] = course;
+    } else {
+      updated = [course, ...current];
+    }
+    localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(updated));
+  }
+
+  try {
+    await supabase.from('courses').upsert({
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      description: course.description,
+      instructor: course.instructor,
+      price: course.price,
+      compare_at_price: course.compare_at_price,
+      category: course.category,
+      level: course.level,
+      modality: course.modality,
+      duration: course.duration,
+      modules_count: course.modules_count,
+      lessons_count: course.lessons_count,
+      students_count: course.students_count,
+      rating: course.rating,
+      status: course.status,
+      cover_image: course.cover_image,
+      trailer_url: course.trailer_url,
+      featured: course.featured,
+    });
+  } catch {
+    // offline fallback
+  }
+
+  return course;
+}
+
+export async function deleteCourse(id: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    const current = await getCourses();
+    const updated = current.filter((c) => c.id !== id);
+    localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(updated));
+  }
+
+  try {
+    await supabase.from('courses').delete().eq('id', id);
+  } catch {
+    // table not ready
+  }
+  return true;
+}
+
+// Generate Supabase Storage Public Video URL
+export function getSupabaseVideoUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${supabaseUrl}/storage/v1/object/public/course-videos/${path.replace(/^course-videos\//, '')}`;
+}
+
+// =====================================================================
+// COMPLETE SUPABASE SQL SCRIPT: DATABASE + STORAGE + POLICIES + SEEDS
+// =====================================================================
+export const SUPABASE_SQL_MIGRATION = `-- =====================================================================
+-- GIRLS & LAW: BASE DE DATOS COMPLETA + SUPABASE VIDEO STORAGE
+-- Pega y ejecuta este script completo en el SQL Editor de tu Supabase:
+-- https://supabase.com/dashboard/project/gfyqhlaytcrpbidgrijj/sql
+-- =====================================================================
+
+-- 1. TABLA DE PERFILES DE USUARIOS (Roles y Niveles)
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  email text not null,
+  full_name text,
+  avatar_url text,
+  role text not null default 'alumna' check (role in ('admin', 'profesora', 'alumna')),
+  level text not null default 'inicial' check (level in ('inicial', 'pro', 'vip')),
+  phone text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "Perfiles legibles por usuarios autenticados" on public.profiles;
+create policy "Perfiles legibles por usuarios autenticados" on public.profiles
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "Usuarios actualizan su propio perfil" on public.profiles;
+create policy "Usuarios actualizan su propio perfil" on public.profiles
+  for update using (auth.uid() = id);
+
+drop policy if exists "Admins gestionan perfiles" on public.profiles;
+create policy "Admins gestionan perfiles" on public.profiles
+  for all using (
+    exists (
+      select 1 from public.profiles where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- 2. TRIGGER AUTOMÁTICO: AL CREARSE UN USUARIO EN AUTH.USERS
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, full_name, role, level)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    case when new.email = 'anthonnywt@gmail.com' then 'admin' else 'alumna' end,
+    case when new.email = 'anthonnywt@gmail.com' then 'vip' else 'inicial' end
+  )
+  on conflict (id) do update set
+    role = case when new.email = 'anthonnywt@gmail.com' then 'admin' else public.profiles.role end,
+    level = case when new.email = 'anthonnywt@gmail.com' then 'vip' else public.profiles.level end;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- ASIGNAR DIRECTAMENTE A TU USUARIO ANTHONNY COMO ADMIN VIP
+insert into public.profiles (id, email, full_name, role, level)
+values (
+  'e3bdf9ed-c289-4624-badf-7f26bae14ed8',
+  'anthonnywt@gmail.com',
+  'Anthonny (Administrador General)',
+  'admin',
+  'vip'
+)
+on conflict (id) do update set role = 'admin', level = 'vip';
+
+-- 3. TABLA DE CURSOS (Modelo de Venta de Cursos / Pago Único)
+create table if not exists public.courses (
+  id text primary key,
+  title text not null,
+  slug text not null unique,
+  description text,
+  instructor text not null default 'Roxana Rivera',
+  price numeric not null default 0,
+  compare_at_price numeric,
+  category text not null default 'Litigio',
+  level text not null default 'Intermedio',
+  modality text not null default 'Asincrónico',
+  duration text default '10 horas',
+  modules_count integer default 0,
+  lessons_count integer default 0,
+  students_count integer default 0,
+  rating numeric default 5.0,
+  status text not null default 'published' check (status in ('published', 'draft', 'archived')),
+  cover_image text,
+  trailer_url text,
+  featured boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.courses enable row level security;
+
+drop policy if exists "Cursos visibles públicamente" on public.courses;
+create policy "Cursos visibles públicamente" on public.courses
+  for select using (true);
+
+drop policy if exists "Gestión de cursos para administradores" on public.courses;
+create policy "Gestión de cursos para administradores" on public.courses
+  for all using (
+    exists (
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+    )
+  );
+
+-- 4. TABLA DE MÓDULOS DE CURSOS
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  course_id text references public.courses(id) on delete cascade not null,
+  title text not null,
+  description text,
+  order_index integer default 0,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.modules enable row level security;
+
+drop policy if exists "Módulos visibles públicamente" on public.modules;
+create policy "Módulos visibles públicamente" on public.modules
+  for select using (true);
+
+drop policy if exists "Admins gestionan módulos" on public.modules;
+create policy "Admins gestionan módulos" on public.modules
+  for all using (
+    exists (
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+    )
+  );
+
+-- 5. TABLA DE LECCIONES (VIDEOS EN SUPABASE STORAGE)
+create table if not exists public.lessons (
+  id uuid primary key default gen_random_uuid(),
+  module_id uuid references public.modules(id) on delete cascade not null,
+  course_id text references public.courses(id) on delete cascade not null,
+  title text not null,
+  description text,
+  duration text default '15 min',
+  video_url text, -- URL directa o enlace público de Supabase Storage
+  storage_path text, -- Ruta en el bucket Supabase: ej. 'course-videos/litigio/clase-01.mp4'
+  order_index integer default 0,
+  is_free_preview boolean default false,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.lessons enable row level security;
+
+drop policy if exists "Lecciones visibles para alumnas y previews" on public.lessons;
+create policy "Lecciones visibles para alumnas y previews" on public.lessons
+  for select using (
+    is_free_preview = true or
+    auth.role() = 'authenticated'
+  );
+
+drop policy if exists "Admins gestionan lecciones" on public.lessons;
+create policy "Admins gestionan lecciones" on public.lessons
+  for all using (
+    exists (
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+    )
+  );
+
+-- 6. TABLA DE MATRÍCULAS / VENTAS DE CURSOS (Pago Único)
+create table if not exists public.enrollments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  course_id text references public.courses(id) on delete cascade not null,
+  amount_paid numeric not null default 0,
+  payment_method text default 'tarjeta',
+  status text not null default 'active' check (status in ('active', 'completed', 'refunded')),
+  progress_percent integer default 0,
+  enrolled_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.enrollments enable row level security;
+
+drop policy if exists "Alumnas ven sus propias matrículas" on public.enrollments;
+create policy "Alumnas ven sus propias matrículas" on public.enrollments
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "Admins ven y gestionan todas las matrículas" on public.enrollments;
+create policy "Admins ven y gestionan todas las matrículas" on public.enrollments
+  for all using (
+    exists (
+      select 1 from public.profiles where id = auth.uid() and role = 'admin'
+    )
+  );
+
+-- 7. TABLA DE PROGRESO DE LECCIONES VISTAS POR ALUMNA
+create table if not exists public.lesson_progress (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  lesson_id uuid references public.lessons(id) on delete cascade not null,
+  course_id text references public.courses(id) on delete cascade not null,
+  completed boolean default false,
+  completed_at timestamp with time zone,
+  last_watched_seconds integer default 0,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (user_id, lesson_id)
+);
+
+alter table public.lesson_progress enable row level security;
+
+drop policy if exists "Usuarios gestionan su progreso" on public.lesson_progress;
+create policy "Usuarios gestionan su progreso" on public.lesson_progress
+  for all using (auth.uid() = user_id);
+
+-- 8. STORAGE BUCKET PARA VIDEOS DE CURSOS (course-videos)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'course-videos',
+  'course-videos',
+  true, -- Permite streaming fluido directo para las alumnas
+  1073741824, -- Hasta 1GB por video
+  array['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska']
+)
+on conflict (id) do update set
+  public = true,
+  file_size_limit = 1073741824;
+
+-- Políticas de lectura y subida para el bucket course-videos
+drop policy if exists "Lectura pública de videos para streaming" on storage.objects;
+create policy "Lectura pública de videos para streaming"
+  on storage.objects for select
+  using (bucket_id = 'course-videos');
+
+drop policy if exists "Usuarios autenticados suben videos a course-videos" on storage.objects;
+create policy "Usuarios autenticados suben videos a course-videos"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'course-videos' and
+    auth.role() = 'authenticated'
+  );
+
+drop policy if exists "Usuarios autenticados actualizan videos en course-videos" on storage.objects;
+create policy "Usuarios autenticados actualizan videos en course-videos"
+  on storage.objects for update
+  using (
+    bucket_id = 'course-videos' and
+    auth.role() = 'authenticated'
+  );
+
+drop policy if exists "Usuarios autenticados eliminan videos en course-videos" on storage.objects;
+create policy "Usuarios autenticados eliminan videos en course-videos"
+  on storage.objects for delete
+  using (
+    bucket_id = 'course-videos' and
+    auth.role() = 'authenticated'
+  );
+
+-- =====================================================================
+-- 9. DATOS SEMILLA: INSERTAR LOS 4 CURSOS EMBLEMÁTICOS
+-- =====================================================================
+insert into public.courses (
+  id, title, slug, description, instructor, price, compare_at_price,
+  category, level, modality, duration, modules_count, lessons_count,
+  students_count, rating, status, cover_image, trailer_url, featured
+) values
+(
+  'course-1',
+  'Litigio de Alto Impacto: Poder, Argumentación & Autenticidad',
+  'litigio-de-alto-impacto',
+  'La formación clínica de élite para dominar tribunales con autoridad, persuasión escénica y una teoría del caso imbatible.',
+  'Roxana Rivera',
+  149,
+  249,
+  'Litigio',
+  'Clínico VIP',
+  'Híbrido',
+  '12 horas',
+  3,
+  7,
+  248,
+  4.9,
+  'published',
+  'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=800&auto=format&fit=crop',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  true
+),
+(
+  'course-2',
+  'El Vault Procesal: Redacción de Alegatos y Demandas Ganadoras',
+  'el-vault-procesal',
+  'Acceso y taller práctico a 15 modelos procesales de alta gama en Word con matrices de hechos y pruebas irrebatibles.',
+  'Roxana Rivera',
+  89,
+  139,
+  'Litigio',
+  'Intermedio',
+  'Asincrónico',
+  '6 horas',
+  1,
+  2,
+  182,
+  4.8,
+  'published',
+  'https://images.unsplash.com/photo-1450133064473-71024230f91b?q=80&w=800&auto=format&fit=crop',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  false
+),
+(
+  'course-3',
+  'Técnica de Interrogatorio y Objeciones en Audiencia Real',
+  'interrogatorio-y-objeciones',
+  'Aprende a formular preguntas cerradas que acorralan, a controlar testigos hostiles y a objetar en 0.5 segundos con base legal.',
+  'Roxana Rivera',
+  120,
+  180,
+  'Oralidad',
+  'Avanzado',
+  'En Vivo',
+  '8 horas',
+  1,
+  1,
+  134,
+  5.0,
+  'published',
+  'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=800&auto=format&fit=crop',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  false
+),
+(
+  'course-4',
+  'Marca Personal Jurídica y Negociación de Honorarios Premium',
+  'marca-personal-honorarios',
+  'Aprende a cobrar por valor, negociar acuerdos extrajudiciales con el método Harvard y construir un prestigio intachable en redes.',
+  'Dra. Camila Soto',
+  95,
+  150,
+  'Marca Personal',
+  'Intermedio',
+  'Asincrónico',
+  '5 horas',
+  0,
+  0,
+  96,
+  4.9,
+  'draft',
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
+  null,
+  false
+)
+on conflict (id) do update set
+  title = excluded.title,
+  price = excluded.price,
+  status = excluded.status,
+  cover_image = excluded.cover_image;
+
+-- 10. MÓDULOS DEL CURSO 1
+insert into public.modules (id, course_id, title, description, order_index)
+values
+  ('11111111-1111-1111-1111-111111111111', 'course-1', 'Módulo 1: Arquitectura de la Teoría del Caso', 'Construcción de narrativa fáctica, jurídica y probatoria', 1),
+  ('22222222-2222-2222-2222-222222222222', 'course-1', 'Módulo 2: Alegatos de Apertura Memorables', 'El hook inicial en los primeros 120 segundos ante el tribunal', 2),
+  ('33333333-3333-3333-3333-333333333333', 'course-1', 'Módulo 3: Contra-interrogatorio Quirúrgico', 'Técnicas avanzadas con peritos y testigos hostiles', 3)
+on conflict (id) do nothing;
+
+-- 11. LECCIONES CON VIDEOS ASOCIADOS (Lista para Supabase Storage)
+insert into public.lessons (id, module_id, course_id, title, duration, video_url, storage_path, order_index, is_free_preview, notes)
+values
+  (
+    'aaaaaaa1-1111-1111-1111-111111111111',
+    '11111111-1111-1111-1111-111111111111',
+    'course-1',
+    'Clase 01: El Hecho Relevante vs. La Paja Procesal',
+    '18 min',
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    'course-videos/litigio/clase-01-hecho-relevante.mp4',
+    1,
+    true,
+    'Aprende a depurar los hechos no controvertidos y enfocar la atención del juez.'
+  ),
+  (
+    'aaaaaaa2-2222-2222-2222-222222222222',
+    '11111111-1111-1111-1111-111111111111',
+    'course-1',
+    'Clase 02: Matriz Fáctico-Jurídica en Word',
+    '24 min',
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    'course-videos/litigio/clase-02-matriz-factica.mp4',
+    2,
+    false,
+    'Estructuración de la tabla de verificación de prueba directa e indiciaria.'
+  ),
+  (
+    'aaaaaaa3-3333-3333-3333-333333333333',
+    '11111111-1111-1111-1111-111111111111',
+    'course-1',
+    'Clase 03: Identificación de Debilidades de la Contraparte',
+    '21 min',
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    'course-videos/litigio/clase-03-debilidades.mp4',
+    3,
+    false,
+    'Anticipación y neutralización del contraargumento procesal.'
+  ),
+  (
+    'aaaaaaa4-4444-4444-4444-444444444444',
+    '22222222-2222-2222-2222-222222222222',
+    'course-1',
+    'Clase 04: El Hook Inicial y la Frase Fuerza',
+    '25 min',
+    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    'course-videos/litigio/clase-04-hook-inicial.mp4',
+    4,
+    false,
+    'Uso de pausas, cadencia de voz y contacto visual en sala.'
+  )
+on conflict (id) do nothing;
+
+-- 12. MATRICULAR AL USUARIO ANTHONNY EN TODOS LOS CURSOS PARA TESTING
+insert into public.enrollments (user_id, course_id, amount_paid, payment_method, status, progress_percent)
+values
+  ('e3bdf9ed-c289-4624-badf-7f26bae14ed8', 'course-1', 149, 'stripe', 'active', 45),
+  ('e3bdf9ed-c289-4624-badf-7f26bae14ed8', 'course-2', 89, 'stripe', 'active', 20),
+  ('e3bdf9ed-c289-4624-badf-7f26bae14ed8', 'course-3', 120, 'stripe', 'active', 0)
+on conflict do nothing;
+`;

@@ -1,0 +1,12 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import { DashboardApp } from '@/components/dashboard/DashboardApp';
+---
+
+<Layout
+  title="Dashboard & Gestión de Cursos | Girls & Law"
+  description="Panel de administración y gestión de cursos, matrículas y alumnas de Girls & Law."
+  showFooter={false}
+>
+  <DashboardApp client:load />
+</Layout>

@@ -5,11 +5,13 @@ import { PoufFooter } from '@/components/pouf/PoufFooter';
 interface Props {
   title?: string;
   description?: string;
+  showFooter?: boolean;
 }
 
 const {
   title = 'Girls & Law | Masterclass: Litigio de Alto Impacto',
   description = 'Comunidad de mujeres multifacéticas en el derecho. Redefiniendo el ejercicio jurídico desde la autenticidad, la excelencia y la sororidad.',
+  showFooter = true,
 } = Astro.props;
 ---
 
@@ -46,6 +48,6 @@ const {
     <main class="flex-1">
       <slot />
     </main>
-    <PoufFooter client:load />
+    {showFooter && <PoufFooter client:load />}
   </body>
 </html>

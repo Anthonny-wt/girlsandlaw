@@ -1,0 +1,12 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import { DashboardApp } from '@/components/dashboard/DashboardApp';
+---
+
+<Layout
+  title="Iniciar Sesión | Campus Girls & Law"
+  description="Acceso para alumnas y administración de Girls & Law."
+  showFooter={false}
+>
+  <DashboardApp client:load />
+</Layout>
