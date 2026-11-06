@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { sileo } from 'sileo';
 import {
   supabase,
   getCourses,
@@ -110,15 +111,29 @@ export function DashboardApp() {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const videoPlayerRef = useRef<HTMLVideoElement | null>(null);
 
-  // Toast notification
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState<string>('');
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+  const showToast = (
+    title: string,
+    description?: string,
+    type: 'success' | 'error' | 'info' | 'warning' = 'success'
+  ) => {
+    switch (type) {
+      case 'error':
+        sileo.error({ title, description });
+        break;
+      case 'warning':
+        sileo.warning({ title, description });
+        break;
+      case 'info':
+        sileo.info({ title, description });
+        break;
+      default:
+        sileo.success({ title, description });
+        break;
+    }
   };
 
   // Initial Load: Check Supabase Session
@@ -418,15 +433,6 @@ export function DashboardApp() {
 
   return (
     <div className="min-h-screen flex bg-[#FFF5F9] text-[#2A1828] font-sans antialiased">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <div className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-white text-[#2A1828] text-xs font-bold shadow-[0_12px_36px_rgba(227,27,109,0.18)] border border-pink-200">
-            <CheckCircle2 className="w-4 h-4 text-[#E31B6D] shrink-0" />
-            <span>{toastMessage}</span>
-          </div>
-        </div>
-      )}
 
       {/* =======================================================================
        * LEFT SIDEBAR: Clean Fernly Structure + Girls & Law Signature Claymorphism

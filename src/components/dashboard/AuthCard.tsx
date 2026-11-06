@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sileo } from 'sileo';
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -33,11 +34,19 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         }
 
         if (data.session && data.user) {
+          sileo.success({
+            title: '¡Cuenta creada con éxito!',
+            description: 'Bienvenida al Campus de Girls & Law',
+          });
           onSuccess(data.user);
         } else {
-          setInfoMessage(
-            '¡Registro recibido! Si Supabase tiene confirmación de correo activa, revisa tu bandeja para verificar tu cuenta antes de iniciar sesión.'
-          );
+          const msg =
+            '¡Registro recibido! Si Supabase tiene confirmación de correo activa, revisa tu bandeja para verificar tu cuenta antes de iniciar sesión.';
+          setInfoMessage(msg);
+          sileo.info({
+            title: 'Registro recibido',
+            description: 'Revisa tu bandeja para confirmar tu correo',
+          });
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -50,16 +59,24 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         }
 
         if (data.user) {
+          sileo.success({
+            title: '¡Bienvenida!',
+            description: 'Acceso verificado en el Campus Virtual',
+          });
           onSuccess(data.user);
         }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al autenticar en Supabase';
-      setErrorMessage(
+      const formatted =
         msg === 'Invalid login credentials'
           ? 'Credenciales inválidas. Verifica tu correo y contraseña registrados en Supabase.'
-          : msg
-      );
+          : msg;
+      setErrorMessage(formatted);
+      sileo.error({
+        title: 'Error de acceso',
+        description: formatted,
+      });
     } finally {
       setLoading(false);
     }
@@ -69,6 +86,11 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
     setErrorMessage(null);
     setInfoMessage(null);
     setLoading(true);
+
+    sileo.info({
+      title: 'Conectando con Google',
+      description: 'Redirigiendo a la pantalla de acceso seguro...',
+    });
 
     try {
       const redirectOrigin =
@@ -86,11 +108,14 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al conectar con Google';
-      setErrorMessage(
-        msg.includes('provider is not enabled')
-          ? 'El proveedor Google no está activado aún en tu proyecto de Supabase. Sigue el instructivo de configuración paso a paso.'
-          : msg
-      );
+      const formatted = msg.includes('provider is not enabled')
+        ? 'El proveedor Google no está activado aún en tu proyecto de Supabase. Sigue el instructivo de configuración paso a paso.'
+        : msg;
+      setErrorMessage(formatted);
+      sileo.error({
+        title: 'Error con Google',
+        description: formatted,
+      });
       setLoading(false);
     }
   };

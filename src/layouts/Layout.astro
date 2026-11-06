@@ -1,6 +1,7 @@
 ---
 import '@/styles/global.css';
 import { PoufFooter } from '@/components/pouf/PoufFooter';
+import { ToasterProvider } from '@/components/common/ToasterProvider';
 
 interface Props {
   title?: string;
@@ -45,6 +46,7 @@ const {
     <meta property="og:type" content="website" />
   </head>
   <body class="min-h-screen flex flex-col bg-[#FFF5F9] text-ink antialiased font-pouf">
+    <ToasterProvider client:load />
     <main class="flex-1">
       <slot />
     </main>
