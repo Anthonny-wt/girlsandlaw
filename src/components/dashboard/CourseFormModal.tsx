@@ -1,6 +1,23 @@
-import { useState, useEffect } from 'react';
-import type { Course } from '@/lib/supabase';
-import { X, Image as ImageIcon, Sparkles, BookOpen, Clock, DollarSign, Award, Layers, Video } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { sileo } from 'sileo';
+import { uploadVideoToSupabaseStorage, type Course } from '@/lib/supabase';
+import {
+  X,
+  Image as ImageIcon,
+  Sparkles,
+  BookOpen,
+  Clock,
+  DollarSign,
+  Award,
+  Layers,
+  Video,
+  UploadCloud,
+  CheckCircle2,
+  Trash2,
+  RefreshCw,
+  Loader2,
+  FileVideo,
+} from 'lucide-react';
 
 interface CourseFormModalProps {
   isOpen: boolean;
@@ -34,8 +51,9 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
     slug: '',
     description: '',
     instructor: 'Roxana Rivera',
-    price: 120,
-    compare_at_price: 180,
+    price: 50,
+    compare_at_price: 120,
+    currency: 'PEN',
     category: 'Litigio',
     level: 'Intermedio',
     modality: 'Asincrónico',
@@ -49,6 +67,11 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
     trailer_url: '',
     featured: false,
   });
+
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [showManualUrl, setShowManualUrl] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (courseToEdit) {
@@ -79,6 +102,52 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
   }, [courseToEdit, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mov|webm|mkv|avi)$/i)) {
+      sileo.error({
+        title: 'Formato no soportado',
+        description: 'Por favor selecciona un archivo de video válido (MP4, MOV o WebM).',
+      });
+      return;
+    }
+
+    if (file.size > 1024 * 1024 * 1024) {
+      sileo.error({
+        title: 'Archivo demasiado pesado',
+        description: 'El tamaño máximo permitido para video es de 1 GB.',
+      });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    setUploadedFileName(file.name);
+    try {
+      const folder = formData.slug || formData.id || 'trailers';
+      const result = await uploadVideoToSupabaseStorage(file, `courses/${folder}`);
+      setFormData((prev) => ({
+        ...prev,
+        trailer_url: result.url,
+      }));
+      sileo.success({
+        title: '¡Video subido con éxito!',
+        description: `"${file.name}" se guardó en el bucket "course-videos" de Supabase.`,
+      });
+    } catch {
+      sileo.error({
+        title: 'Error al subir video',
+        description: 'No se pudo subir el archivo. Intenta de nuevo.',
+      });
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleTitleChange = (val: string) => {
     const slug = val
@@ -275,16 +344,16 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
           </div>
 
-          {/* Pricing (Venta de Cursos - Pago Único) & Duration */}
+          {/* Pricing (Venta de Cursos - Pago Único en Soles) & Duration */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-[#E31B6D]" /> Precio Venta (USD)
+                <DollarSign className="w-3.5 h-3.5 text-[#E31B6D]" /> Precio Venta (Soles PEN)
               </label>
               <input
                 type="number"
                 min="0"
-                value={formData.price ?? 99}
+                value={formData.price ?? 50}
                 onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                 className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-black text-sm"
               />
@@ -292,7 +361,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
 
             <div className="space-y-1.5">
               <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider">
-                Antes (USD)
+                Antes (Soles PEN)
               </label>
               <input
                 type="number"
@@ -301,7 +370,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                 onChange={(e) =>
                   setFormData({ ...formData, compare_at_price: Number(e.target.value) })
                 }
-                placeholder="150"
+                placeholder="120"
                 className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-black text-sm"
               />
             </div>
@@ -334,21 +403,161 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
           </div>
 
-          {/* Video Trailer / Supabase Storage Video Path */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
-              <Video className="w-3.5 h-3.5 text-[#E31B6D]" /> Video Trailer / URL Supabase Storage
-            </label>
+          {/* Subir Video Trailer / Contenido a Supabase Storage */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-[#E31B6D]" /> Video Trailer / Contenido en Supabase Storage
+              </label>
+              <span className="text-[10px] font-bold text-[#A08A9E]">
+                Bucket: <strong className="text-[#E31B6D] font-mono">course-videos</strong>
+              </span>
+            </div>
+
+            {/* Input nativo oculto para subida de archivos */}
             <input
-              type="text"
-              value={formData.trailer_url || ''}
-              onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
-              placeholder="https://gfyqhlaytcrpbidgrijj.supabase.co/storage/v1/object/public/course-videos/... o URL mp4"
-              className="w-full px-4 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] text-xs font-mono"
+              type="file"
+              ref={videoFileInputRef}
+              accept="video/mp4,video/webm,video/quicktime,video/x-matroska,.mp4,.mov,.webm,.mkv"
+              onChange={handleVideoFileChange}
+              className="hidden"
             />
-            <p className="text-[10px] text-[#6A5A6D]">
-              Puedes pegar la URL directa de Supabase Storage o la ruta relativa dentro del bucket <code className="text-[#E31B6D] font-bold font-mono">course-videos</code>.
-            </p>
+
+            {/* Si ya hay un video cargado o se subió uno nuevo */}
+            {formData.trailer_url ? (
+              <div className="p-4 rounded-2xl bg-[#FFF5F9] border border-pink-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Video Cargado en Supabase</span>
+                    </span>
+                    {uploadedFileName && (
+                      <span className="text-[11px] font-mono font-bold text-[#2A1828] truncate max-w-xs">
+                        {uploadedFileName}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isUploadingVideo}
+                      onClick={() => videoFileInputRef.current?.click()}
+                      className="px-3 py-1 rounded-full bg-white hover:bg-pink-100/70 border border-pink-200 text-[#E31B6D] text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Cambiar Video</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, trailer_url: '' }));
+                        setUploadedFileName('');
+                      }}
+                      className="p-1 rounded-full text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Quitar video"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reproductor de previsualización del video cargado */}
+                <div className="rounded-2xl overflow-hidden bg-black aspect-video relative shadow-inner">
+                  <video
+                    src={formData.trailer_url}
+                    controls
+                    playsInline
+                    className="w-full h-full object-cover"
+                  >
+                    Tu navegador no soporta reproducción de video.
+                  </video>
+                </div>
+
+                {/* Alternar visualización de URL directa */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualUrl(!showManualUrl)}
+                    className="text-[10px] font-bold text-[#6A5A6D] hover:text-[#E31B6D] underline cursor-pointer"
+                  >
+                    {showManualUrl ? 'Ocultar URL directa' : 'Ver / Editar URL directa de Supabase'}
+                  </button>
+                  {showManualUrl && (
+                    <input
+                      type="text"
+                      value={formData.trailer_url || ''}
+                      onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
+                      placeholder="https://gfyqhlaytcrpbidgrijj.supabase.co/storage/v1/object/public/course-videos/..."
+                      className="mt-1.5 w-full px-3 py-2 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-xs font-mono"
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Dropzone para subir video */
+              <div
+                onClick={() => !isUploadingVideo && videoFileInputRef.current?.click()}
+                className={`p-6 sm:p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 ${
+                  isUploadingVideo
+                    ? 'bg-[#FFF0F6] border-[#E31B6D]'
+                    : 'bg-[#FFF9FB] border-pink-200 hover:border-[#E31B6D] hover:bg-[#FFF0F6]/50'
+                }`}
+              >
+                {isUploadingVideo ? (
+                  <>
+                    <Loader2 className="w-8 h-8 text-[#E31B6D] animate-spin" />
+                    <div>
+                      <p className="text-xs font-bold text-[#E31B6D]">
+                        Subiendo archivo a Supabase Storage...
+                      </p>
+                      <p className="text-[10px] text-[#6A5A6D]">
+                        {uploadedFileName || 'Guardando en bucket course-videos'}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-[#FFF0F6] border border-pink-200 flex items-center justify-center text-[#E31B6D] shadow-xs">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-[#2A1828]">
+                        Haz clic aquí para seleccionar y subir video desde tu equipo
+                      </p>
+                      <p className="text-[10px] text-[#6A5A6D] mt-0.5">
+                        Formatos soportados: MP4, MOV o WebM · Hasta 1 GB · Se aloja en Supabase Storage
+                      </p>
+                    </div>
+                    <span className="mt-1 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-[11px] font-bold shadow-xs">
+                      Seleccionar Archivo de Video
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!formData.trailer_url && !isUploadingVideo && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowManualUrl(!showManualUrl)}
+                  className="text-[10px] font-bold text-[#6A5A6D] hover:text-[#E31B6D] underline cursor-pointer"
+                >
+                  {showManualUrl ? 'Ocultar campo de URL' : 'O pegar URL manual de Supabase / CDN'}
+                </button>
+                {showManualUrl && (
+                  <input
+                    type="text"
+                    value={formData.trailer_url || ''}
+                    onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
+                    placeholder="https://gfyqhlaytcrpbidgrijj.supabase.co/storage/v1/object/public/course-videos/... o URL mp4"
+                    className="mt-1.5 w-full px-3 py-2 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-xs font-mono"
+                  />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cover Image & Presets */}

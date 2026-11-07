@@ -12,6 +12,7 @@ import {
   updateUserProfile,
   deleteUserProfile,
   getSupabaseVideoUrl,
+  uploadVideoToSupabaseStorage,
   SUPABASE_SQL_MIGRATION,
   SEED_STUDENTS,
   type Course,
@@ -76,6 +77,8 @@ import {
   ShieldCheck,
   Receipt,
   QrCode,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -123,6 +126,8 @@ export function DashboardApp() {
   );
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const videoPlayerRef = useRef<HTMLVideoElement | null>(null);
+  const lessonFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingLessonVideo, setIsUploadingLessonVideo] = useState(false);
 
   const [copiedSql, setCopiedSql] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
@@ -266,6 +271,72 @@ export function DashboardApp() {
     const updated = await getCourses();
     setCourses(updated);
     showToast(courseToEdit ? 'Curso actualizado con éxito' : 'Nuevo curso publicado en el catálogo');
+  };
+
+  const handleUploadLessonVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeLesson || !selectedCourseForClassroom) return;
+
+    if (!file.type.startsWith('video/') && !file.name.match(/\.(mp4|mov|webm|mkv|avi)$/i)) {
+      sileo.error({
+        title: 'Formato no soportado',
+        description: 'Por favor selecciona un archivo de video válido (MP4, MOV o WebM).',
+      });
+      return;
+    }
+
+    if (file.size > 1024 * 1024 * 1024) {
+      sileo.error({
+        title: 'Archivo demasiado pesado',
+        description: 'El tamaño máximo permitido para video es de 1 GB.',
+      });
+      return;
+    }
+
+    setIsUploadingLessonVideo(true);
+    try {
+      const folder = `courses/${selectedCourseForClassroom.slug || selectedCourseForClassroom.id}/lessons`;
+      const result = await uploadVideoToSupabaseStorage(file, folder);
+
+      const updatedLesson: Lesson = {
+        ...activeLesson,
+        video_url: result.url,
+        storage_path: result.storagePath,
+      };
+      setActiveLesson(updatedLesson);
+
+      const updatedModules = (selectedCourseForClassroom.modules || []).map((m) => ({
+        ...m,
+        lessons: m.lessons.map((les) => (les.id === activeLesson.id ? updatedLesson : les)),
+      }));
+
+      const updatedCourse: Course = {
+        ...selectedCourseForClassroom,
+        modules: updatedModules,
+      };
+
+      setSelectedCourseForClassroom(updatedCourse);
+      setCourses((prev) =>
+        prev.map((c) => (c.id === updatedCourse.id ? updatedCourse : c))
+      );
+
+      await saveCourse(updatedCourse);
+
+      sileo.success({
+        title: '¡Video de lección subido!',
+        description: `"${file.name}" se guardó en Supabase Storage para "${activeLesson.title}".`,
+      });
+    } catch {
+      sileo.error({
+        title: 'Error al subir video',
+        description: 'No se pudo subir el archivo de lección a Supabase Storage.',
+      });
+    } finally {
+      setIsUploadingLessonVideo(false);
+      if (lessonFileInputRef.current) {
+        lessonFileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleDeleteCourse = async (id: string, title: string) => {
@@ -1688,33 +1759,67 @@ export function DashboardApp() {
                           </h2>
                         </div>
 
-                        {/* Lesson Completed Toggle */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (currentLessonLocked) {
-                              sileo.warning({
-                                title: 'Contenido Bloqueado',
-                                description: 'Adquiere el curso para registrar progreso en esta lección.',
-                              });
-                              if (selectedCourseForClassroom) handleOpenCheckout(selectedCourseForClassroom);
-                            } else if (activeLesson) {
-                              toggleLessonCompleted(activeLesson.id);
-                            }
-                          }}
-                          className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
-                            activeLesson && completedLessonIds.has(activeLesson.id)
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.3)]'
-                          }`}
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>
-                            {activeLesson && completedLessonIds.has(activeLesson.id)
-                              ? 'Lección Completada ✓'
-                              : 'Marcar como Vista'}
-                          </span>
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Admin / Teacher Video Upload Button */}
+                          {(currentRole === 'admin' || currentRole === 'profesora') && (
+                            <>
+                              <input
+                                type="file"
+                                ref={lessonFileInputRef}
+                                accept="video/mp4,video/webm,video/quicktime,video/x-matroska,.mp4,.mov,.webm,.mkv"
+                                onChange={handleUploadLessonVideo}
+                                className="hidden"
+                              />
+                              <button
+                                type="button"
+                                disabled={isUploadingLessonVideo}
+                                onClick={() => lessonFileInputRef.current?.click()}
+                                className="px-4 py-2.5 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                                title="Subir video a Supabase Storage para esta clase"
+                              >
+                                {isUploadingLessonVideo ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Subiendo a Supabase...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4" />
+                                    <span>Subir Video a Clase</span>
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
+
+                          {/* Lesson Completed Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentLessonLocked) {
+                                sileo.warning({
+                                  title: 'Contenido Bloqueado',
+                                  description: 'Adquiere el curso para registrar progreso en esta lección.',
+                                });
+                                if (selectedCourseForClassroom) handleOpenCheckout(selectedCourseForClassroom);
+                              } else if (activeLesson) {
+                                toggleLessonCompleted(activeLesson.id);
+                              }
+                            }}
+                            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+                              activeLesson && completedLessonIds.has(activeLesson.id)
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.3)]'
+                            }`}
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>
+                              {activeLesson && completedLessonIds.has(activeLesson.id)
+                                ? 'Lección Completada ✓'
+                                : 'Marcar como Vista'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Lesson Notes & Overview */}

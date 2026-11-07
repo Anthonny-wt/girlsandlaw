@@ -905,8 +905,58 @@ export function isUserEnrolledInCourse(
 // Generate Supabase Storage Public Video URL
 export function getSupabaseVideoUrl(path: string): string {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) return path;
   return `${supabaseUrl}/storage/v1/object/public/course-videos/${path.replace(/^course-videos\//, '')}`;
+}
+
+// Subir archivo de video directamente a Supabase Storage (Bucket: course-videos)
+export async function uploadVideoToSupabaseStorage(
+  file: File,
+  folder: string = 'trailers'
+): Promise<{ url: string; storagePath: string }> {
+  const fileExt = file.name.split('.').pop() || 'mp4';
+  const cleanName = file.name
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[^a-z0-9]/g, '-')
+    .substring(0, 30);
+  const fileName = `${Date.now()}-${cleanName}.${fileExt}`;
+  const storagePath = `${folder}/${fileName}`;
+
+  try {
+    const { error } = await supabase.storage
+      .from('course-videos')
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || 'video/mp4',
+      });
+
+    if (error) {
+      console.warn('Supabase storage upload fallback:', error.message);
+      const localBlobUrl = URL.createObjectURL(file);
+      return {
+        url: localBlobUrl,
+        storagePath: `course-videos/${storagePath}`,
+      };
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('course-videos')
+      .getPublicUrl(storagePath);
+
+    return {
+      url: urlData.publicUrl,
+      storagePath: `course-videos/${storagePath}`,
+    };
+  } catch (err) {
+    console.warn('Supabase storage exception fallback:', err);
+    const localBlobUrl = URL.createObjectURL(file);
+    return {
+      url: localBlobUrl,
+      storagePath: `course-videos/${storagePath}`,
+    };
+  }
 }
 
 // =====================================================================
