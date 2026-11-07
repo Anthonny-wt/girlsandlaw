@@ -21,10 +21,14 @@ import {
   type UserProfile,
   type UserRole,
   type UserLevel,
+  type Enrollment,
+  getUserEnrollments,
+  isUserEnrolledInCourse,
 } from '@/lib/supabase';
 import { AuthCard } from './AuthCard';
 import { CourseFormModal } from './CourseFormModal';
 import { UserFormModal } from './UserFormModal';
+import { CourseCheckoutModal } from './CourseCheckoutModal';
 import {
   LayoutDashboard,
   BookOpen,
@@ -66,6 +70,12 @@ import {
   Maximize2,
   DollarSign,
   Heart,
+  ShoppingBag,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  Receipt,
+  QrCode,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -76,9 +86,12 @@ export function DashboardApp() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [students, setStudents] = useState<Student[]>(SEED_STUDENTS);
   const [userList, setUserList] = useState<UserProfile[]>([]);
+  const [userEnrollments, setUserEnrollments] = useState<Enrollment[]>([]);
+  const [courseToBuy, setCourseToBuy] = useState<Course | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'courses' | 'classroom' | 'students' | 'users' | 'metrics' | 'supabase-sync'
+    'dashboard' | 'courses' | 'classroom' | 'my-courses' | 'students' | 'users' | 'metrics' | 'supabase-sync'
   >('dashboard');
 
   // Sidebar toggle for mobile
@@ -147,6 +160,8 @@ export function DashboardApp() {
           setSupabaseUser(user);
           const p = await getUserProfile(user.id, user.email);
           setProfile(p);
+          const enrollments = await getUserEnrollments(user.id);
+          setUserEnrollments(enrollments);
           if (p?.role === 'alumna') {
             setActiveTab('classroom');
           }
@@ -177,12 +192,15 @@ export function DashboardApp() {
         setSupabaseUser(session.user);
         const p = await getUserProfile(session.user.id, session.user.email);
         setProfile(p);
+        const enrollments = await getUserEnrollments(session.user.id);
+        setUserEnrollments(enrollments);
         if (p?.role === 'alumna') {
           setActiveTab('classroom');
         }
       } else {
         setSupabaseUser(null);
         setProfile(null);
+        setUserEnrollments([]);
       }
     });
 
@@ -195,6 +213,8 @@ export function DashboardApp() {
     setSupabaseUser(user);
     const p = await getUserProfile(user.id, user.email);
     setProfile(p);
+    const enrollments = await getUserEnrollments(user.id);
+    setUserEnrollments(enrollments);
     if (p?.role === 'alumna') {
       setActiveTab('classroom');
     } else {
@@ -208,7 +228,36 @@ export function DashboardApp() {
     setSupabaseUser(null);
     setProfile(null);
     setPreviewRole(null);
+    setUserEnrollments([]);
     showToast('Sesión cerrada');
+  };
+
+  const isEnrolled = (courseId: string) => {
+    return isUserEnrolledInCourse(userEnrollments, courseId, currentRole);
+  };
+
+  const handleOpenCheckout = (course: Course) => {
+    setCourseToBuy(course);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleCheckoutSuccess = (newEnrollment: Enrollment) => {
+    setUserEnrollments((prev) => [newEnrollment, ...prev]);
+    setCourses((prev) =>
+      prev.map((c) =>
+        c.id === newEnrollment.course_id
+          ? { ...c, students_count: (c.students_count || 0) + 1 }
+          : c
+      )
+    );
+    const bought = courses.find((c) => c.id === newEnrollment.course_id);
+    if (bought) {
+      setSelectedCourseForClassroom(bought);
+      if (bought.modules?.[0]?.lessons?.[0]) {
+        setActiveLesson(bought.modules[0].lessons[0]);
+      }
+      setActiveTab('classroom');
+    }
   };
 
   // Course actions
@@ -549,6 +598,27 @@ export function DashboardApp() {
                   </span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('my-courses');
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'my-courses'
+                      ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                      : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ShoppingBag className={`w-4 h-4 ${activeTab === 'my-courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                    <span>Mis Cursos Comprados</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E31B6D] text-white">
+                    {userEnrollments.length}
+                  </span>
+                </button>
+
                 {currentRole === 'admin' && (
                   <>
                     <button
@@ -746,6 +816,20 @@ export function DashboardApp() {
               </div>
             )}
 
+            {/* Shortcut: Mis Cursos Comprados */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('my-courses')}
+              className={`hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                activeTab === 'my-courses'
+                  ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-pink-500/20'
+                  : 'bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200/80'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Mis Cursos ({userEnrollments.length})</span>
+            </button>
+
             {/* User Chip */}
             <div className="flex items-center gap-2.5 pl-2">
               <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white flex items-center justify-center text-xs font-black shadow-sm shadow-pink-500/30">
@@ -866,7 +950,7 @@ export function DashboardApp() {
                   </div>
                   <div className="mt-4">
                     <span className="text-3xl font-serif italic font-black text-[#2A1828]">
-                      ${avgTicket} USD
+                      S/. {avgTicket} PEN
                     </span>
                     <p className="text-xs text-[#6A5A6D] font-bold mt-1">
                       Pago Único por Masterclass
@@ -886,10 +970,10 @@ export function DashboardApp() {
                   </div>
                   <div className="mt-4">
                     <span className="text-3xl font-serif italic font-black text-[#2A1828]">
-                      ${totalRevenue.toLocaleString()}
+                      S/. {totalRevenue.toLocaleString()}
                     </span>
                     <p className="text-xs text-emerald-600 font-bold mt-1">
-                      USD Confirmados en Stripe/Banco
+                      PEN Confirmados (Yape/Banco/Tarjeta)
                     </p>
                   </div>
                 </div>
@@ -1003,7 +1087,7 @@ export function DashboardApp() {
                                   <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
                                   <div className="text-right">
                                     <span className="text-base font-serif italic font-black text-[#E31B6D]">
-                                      ${c.price} USD
+                                      S/. {c.price} PEN
                                     </span>
                                     <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
                                       Pago Único
@@ -1014,17 +1098,33 @@ export function DashboardApp() {
                             </div>
 
                             <div className="px-5 py-3 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStatus(c)}
-                                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-colors cursor-pointer ${
-                                  c.status === 'published'
-                                    ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                }`}
-                              >
-                                {c.status === 'published' ? 'Pausar Venta' : 'Activar Venta'}
-                              </button>
+                              {currentRole === 'admin' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStatus(c)}
+                                  className={`text-[11px] font-bold px-3 py-1 rounded-full transition-colors cursor-pointer ${
+                                    c.status === 'published'
+                                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                      : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  }`}
+                                >
+                                  {c.status === 'published' ? 'Pausar Venta' : 'Activar Venta'}
+                                </button>
+                              ) : isEnrolled(c.id) ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                                  <Check className="w-3 h-3" />
+                                  <span>Adquirido</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCheckout(c)}
+                                  className="text-[11px] font-bold px-3.5 py-1 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-xs hover:brightness-105 transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <Sparkles className="w-3 h-3" />
+                                  <span>Comprar S/. {c.price}</span>
+                                </button>
+                              )}
 
                               <div className="flex items-center gap-1.5">
                                 <button
@@ -1041,25 +1141,29 @@ export function DashboardApp() {
                                 >
                                   <PlayCircle className="w-4 h-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCourseToEdit(c);
-                                    setIsModalOpen(true);
-                                  }}
-                                  className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D] transition-colors cursor-pointer"
-                                  title="Editar"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCourse(c.id, c.title)}
-                                  className="p-1.5 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {currentRole === 'admin' && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCourseToEdit(c);
+                                        setIsModalOpen(true);
+                                      }}
+                                      className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D] transition-colors cursor-pointer"
+                                      title="Editar"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCourse(c.id, c.title)}
+                                      className="p-1.5 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                                      title="Eliminar"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1100,7 +1204,7 @@ export function DashboardApp() {
                                 <td className="py-3 text-[#6A5A6D] font-bold">{c.category}</td>
                                 <td className="py-3 text-[#6A5A6D]">{c.instructor}</td>
                                 <td className="py-3 font-serif italic font-black text-[#E31B6D]">
-                                  ${c.price} USD
+                                  S/. {c.price} PEN
                                 </td>
                                 <td className="py-3">
                                   <span
@@ -1192,7 +1296,7 @@ export function DashboardApp() {
                             </div>
                           </div>
                           <span className="text-xs font-serif italic font-black text-[#E31B6D] shrink-0">
-                            ${stu.amount_paid} USD
+                            S/. {stu.amount_paid} PEN
                           </span>
                         </div>
                       ))}
@@ -1322,7 +1426,7 @@ export function DashboardApp() {
                           <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
                           <div className="text-right">
                             <span className="text-lg font-serif italic font-black text-[#E31B6D]">
-                              ${c.price} USD
+                              S/. {c.price} PEN
                             </span>
                             <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
                               Pago Único
@@ -1389,242 +1493,604 @@ export function DashboardApp() {
 
           {/* =======================================================================
            * TAB: MI AULA VIRTUAL (REPRODUCTOR DE VIDEO SUPABASE STORAGE & TEMARIO)
+           * Protegido contra filtraciones: Lecciones privadas bloqueadas sin matrícula
            * ======================================================================= */}
-          {activeTab === 'classroom' && (
-            <div className="space-y-6">
-              {/* Classroom Header Banner */}
-              <div className="rounded-3xl bg-white border border-pink-100/90 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_12px_32px_rgba(227,27,109,0.06)]">
+          {activeTab === 'classroom' && (() => {
+            const hasPurchasedClassroomCourse = selectedCourseForClassroom
+              ? isEnrolled(selectedCourseForClassroom.id)
+              : false;
+            const currentLessonLocked =
+              !hasPurchasedClassroomCourse && !activeLesson?.is_free_preview;
+
+            return (
+              <div className="space-y-6">
+                {/* Classroom Header Banner */}
+                <div className="rounded-3xl bg-white border border-pink-100/90 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_12px_32px_rgba(227,27,109,0.06)]">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBF3] text-[10px] font-black text-[#E31B6D] uppercase tracking-wider mb-2">
+                      <Sparkles className="w-3 h-3" />
+                      Aula Virtual &amp; Streaming Supabase
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828]">
+                      {selectedCourseForClassroom?.title || 'Litigio de Alto Impacto'}
+                    </h1>
+                    <p className="text-xs text-[#6A5A6D] mt-1 max-w-2xl">
+                      Docente: <strong className="text-[#E31B6D]">{selectedCourseForClassroom?.instructor || 'Roxana Rivera'}</strong> · Acceso permanente con lecciones en video HD y materiales descargables en Word.
+                    </p>
+                  </div>
+
+                  {/* Course Switcher if multiple courses exist */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedCourseForClassroom?.id || ''}
+                      onChange={(e) => {
+                        const found = courses.find((c) => c.id === e.target.value);
+                        if (found) {
+                          setSelectedCourseForClassroom(found);
+                          if (found.modules?.[0]?.lessons?.[0]) {
+                            setActiveLesson(found.modules[0].lessons[0]);
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 rounded-full bg-[#FFF0F6] border border-pink-200 text-xs font-bold text-[#2A1828] focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30"
+                    >
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Free Preview Warning / Course Purchase Banner if not enrolled */}
+                {!hasPurchasedClassroomCourse && selectedCourseForClassroom && (
+                  <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#FFF0F6] via-[#FFEBF3] to-white border border-pink-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-[#E31B6D] text-white flex items-center justify-center shrink-0 shadow-sm shadow-pink-500/30">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-black text-[#2A1828]">
+                            Modo Muestra Gratuita (Preview Activo)
+                          </p>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                            Clases de Muestra
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#6A5A6D] mt-0.5">
+                          Estás navegando en modo de prueba. Adquiere el curso para desbloquear todas las grabaciones en video 4K y descargar las matrices procesales en Word.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCheckout(selectedCourseForClassroom)}
+                      className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs shadow-[0_8px_20px_rgba(227,27,109,0.3)] hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Comprar por S/. {selectedCourseForClassroom.price} PEN</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Main Video Classroom Layout: Player (Left) + Curriculum/Playlist (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left 8 Cols: Video Player & Lesson Details */}
+                  <div className="lg:col-span-8 space-y-4">
+                    {/* Video Player Card / Anti-Leak Secure Lock Screen */}
+                    {!currentLessonLocked ? (
+                      <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-pink-200/40 relative aspect-video flex flex-col justify-end">
+                        {/* HTML5 Video Element */}
+                        <video
+                          ref={videoPlayerRef}
+                          key={activeLesson?.id || 'default-player'}
+                          controls
+                          playsInline
+                          className="w-full h-full object-cover"
+                          poster={selectedCourseForClassroom?.cover_image}
+                        >
+                          <source
+                            src={
+                              activeLesson?.video_url
+                                ? getSupabaseVideoUrl(activeLesson.video_url)
+                                : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                            }
+                            type="video/mp4"
+                          />
+                          Tu navegador no soporta reproducción de video HTML5.
+                        </video>
+
+                        {/* Supabase Storage Pill Overlay */}
+                        <div className="absolute top-4 left-4 z-20 pointer-events-none">
+                          <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-black uppercase text-pink-300 border border-white/10 flex items-center gap-1.5 shadow-md">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                            {activeLesson?.is_free_preview && !hasPurchasedClassroomCourse
+                              ? 'Clase de Muestra Gratuita'
+                              : 'Supabase Storage CDN · 4K'}
+                          </span>
+                        </div>
+
+                        {/* Storage Path Indicator */}
+                        {activeLesson?.storage_path && (
+                          <div className="absolute top-4 right-4 z-20 pointer-events-none hidden sm:block">
+                            <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[9px] font-mono text-slate-300 border border-white/10">
+                              bucket: {activeLesson.storage_path}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* ZERO LEAK LOCK SCREEN: The private video URL is NEVER rendered or exposed in the DOM */
+                      <div className="bg-gradient-to-br from-[#2A1828] via-[#381B32] to-[#1E0F1D] rounded-3xl overflow-hidden shadow-2xl border border-pink-500/30 relative aspect-video flex flex-col items-center justify-center p-6 sm:p-8 text-center text-white">
+                        <div className="w-16 h-16 rounded-3xl bg-pink-500/20 backdrop-blur-md border border-pink-400/30 flex items-center justify-center text-pink-300 mb-3 shadow-lg">
+                          <Lock className="w-8 h-8" />
+                        </div>
+                        <span className="px-3.5 py-1 rounded-full bg-pink-500/20 text-pink-300 text-[10px] font-black uppercase tracking-wider border border-pink-500/30 mb-2">
+                          Lección Bloqueada · Acceso Exclusivo
+                        </span>
+                        <h3 className="text-xl sm:text-2xl font-serif italic font-bold text-white max-w-lg leading-tight">
+                          {activeLesson?.title || 'Contenido Exclusivo para Alumnas'}
+                        </h3>
+                        <p className="text-xs text-pink-200/80 max-w-md mt-2 leading-relaxed">
+                          Para reproducir esta clase, acceder al código procesal y descargar las matrices en Word, adquiere el curso con pago único en Soles.
+                        </p>
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              selectedCourseForClassroom &&
+                              handleOpenCheckout(selectedCourseForClassroom)
+                            }
+                            className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:brightness-105 active:scale-95 text-white text-xs font-bold shadow-[0_8px_24px_rgba(227,27,109,0.4)] flex items-center gap-2 cursor-pointer transition-all"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            <span>
+                              Comprar Curso por S/. {selectedCourseForClassroom?.price || 50} PEN
+                            </span>
+                          </button>
+                          {selectedCourseForClassroom?.modules?.[0]?.lessons?.find(
+                            (l) => l.is_free_preview
+                          ) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const previewLesson = selectedCourseForClassroom.modules?.[0]?.lessons?.find(
+                                  (l) => l.is_free_preview
+                                );
+                                if (previewLesson) setActiveLesson(previewLesson);
+                              }}
+                              className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 text-pink-200 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Ver Clase de Muestra
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Below Player Action & Meta Bar */}
+                    <div className="bg-white rounded-3xl p-6 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-pink-100">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#FFEBF3] text-[10px] font-black text-[#E31B6D] uppercase">
+                              {activeLesson?.duration || '20 min'}
+                            </span>
+                            <span className="text-xs text-[#A08A9E]">
+                              Módulo: {selectedCourseForClassroom?.modules?.[0]?.title || 'Arquitectura Procesal'}
+                            </span>
+                          </div>
+                          <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
+                            {activeLesson?.title || 'Clase 01: El Hecho Relevante vs. La Paja Procesal'}
+                          </h2>
+                        </div>
+
+                        {/* Lesson Completed Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentLessonLocked) {
+                              sileo.warning({
+                                title: 'Contenido Bloqueado',
+                                description: 'Adquiere el curso para registrar progreso en esta lección.',
+                              });
+                              if (selectedCourseForClassroom) handleOpenCheckout(selectedCourseForClassroom);
+                            } else if (activeLesson) {
+                              toggleLessonCompleted(activeLesson.id);
+                            }
+                          }}
+                          className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+                            activeLesson && completedLessonIds.has(activeLesson.id)
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.3)]'
+                          }`}
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>
+                            {activeLesson && completedLessonIds.has(activeLesson.id)
+                              ? 'Lección Completada ✓'
+                              : 'Marcar como Vista'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Lesson Notes & Overview */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-[#A08A9E]">
+                          Resumen &amp; Guía de Litigación
+                        </h4>
+                        <p className="text-xs text-[#6A5A6D] leading-relaxed">
+                          {activeLesson?.notes ||
+                            'En esta lección aprenderás a separar los hechos irrelevantes y concentrar el 100% de la persuasión en la tesis principal de litigio. Incluye minutas de alegato en Word y modelo de examen directo descargable.'}
+                        </p>
+
+                        {/* Downloadable Materials (Protected if not enrolled) */}
+                        <div className="pt-2 flex flex-wrap gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!hasPurchasedClassroomCourse) {
+                                sileo.warning({
+                                  title: 'Material Protegido',
+                                  description: `Debes adquirir "${selectedCourseForClassroom?.title}" por S/. ${selectedCourseForClassroom?.price || 50} PEN para descargar los modelos procesales en Word.`,
+                                });
+                                if (selectedCourseForClassroom) handleOpenCheckout(selectedCourseForClassroom);
+                              } else {
+                                showToast('Descargando: Plantilla_Matriz_Factica_Word.docx');
+                              }
+                            }}
+                            className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                          >
+                            {hasPurchasedClassroomCourse ? (
+                              <Download className="w-3.5 h-3.5" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5 text-pink-400" />
+                            )}
+                            <span>Plantilla Matriz Fáctica (.docx)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!hasPurchasedClassroomCourse) {
+                                sileo.warning({
+                                  title: 'Material Protegido',
+                                  description: `Debes adquirir "${selectedCourseForClassroom?.title}" por S/. ${selectedCourseForClassroom?.price || 50} PEN para descargar las guías de objeción.`,
+                                });
+                                if (selectedCourseForClassroom) handleOpenCheckout(selectedCourseForClassroom);
+                              } else {
+                                showToast('Descargando: Esquema_Objeciones_PDF.pdf');
+                              }
+                            }}
+                            className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                          >
+                            {hasPurchasedClassroomCourse ? (
+                              <FileText className="w-3.5 h-3.5" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5 text-pink-400" />
+                            )}
+                            <span>Checklist Objeciones (.pdf)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right 4 Cols: Interactive Course Curriculum / Playlist */}
+                  <div className="lg:col-span-4 space-y-4">
+                    <div className="bg-white rounded-3xl p-6 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-pink-100">
+                        <div>
+                          <h3 className="font-serif italic font-bold text-base text-[#2A1828]">
+                            Temario &amp; Videos
+                          </h3>
+                          <p className="text-[11px] text-[#A08A9E]">
+                            {completedLessonIds.size} clases vistas
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 rounded-full bg-[#FFF0F6] text-[#E31B6D] font-black text-xs">
+                          100% HD
+                        </span>
+                      </div>
+
+                      {/* Modules & Lessons Tree */}
+                      <div className="space-y-4">
+                        {(selectedCourseForClassroom?.modules || []).map((mod, modIdx) => (
+                          <div key={mod.id || modIdx} className="space-y-2">
+                            <div className="px-3 py-2 rounded-2xl bg-[#FFF5F9] border border-pink-100 text-xs font-black text-[#2A1828]">
+                              {mod.title}
+                            </div>
+
+                            <div className="space-y-1 pl-1">
+                              {mod.lessons.map((les) => {
+                                const isCurrent = activeLesson?.id === les.id;
+                                const isDone = completedLessonIds.has(les.id);
+                                const isLocked = !hasPurchasedClassroomCourse && !les.is_free_preview;
+
+                                return (
+                                  <button
+                                    key={les.id}
+                                    type="button"
+                                    onClick={() => setActiveLesson(les)}
+                                    className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
+                                      isCurrent
+                                        ? 'bg-gradient-to-r from-[#FFF0F6] to-[#FFE4EF] border border-pink-200/80 shadow-xs'
+                                        : 'hover:bg-pink-50/60'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                                          isDone
+                                            ? 'bg-emerald-500 text-white'
+                                            : isLocked
+                                            ? 'bg-pink-100 text-pink-400'
+                                            : isCurrent
+                                            ? 'bg-[#E31B6D] text-white'
+                                            : 'bg-pink-100 text-[#E31B6D]'
+                                        }`}
+                                      >
+                                        {isDone ? (
+                                          <Check className="w-3.5 h-3.5" />
+                                        ) : isLocked ? (
+                                          <Lock className="w-3 h-3" />
+                                        ) : (
+                                          <Play className="w-3 h-3 fill-current ml-0.5" />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p
+                                          className={`text-xs font-bold leading-tight truncate ${
+                                            isCurrent ? 'text-[#E31B6D]' : 'text-[#2A1828]'
+                                          }`}
+                                        >
+                                          {les.title}
+                                        </p>
+                                        <span className="text-[10px] text-[#A08A9E]">{les.duration}</span>
+                                      </div>
+                                    </div>
+
+                                    {les.is_free_preview ? (
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold shrink-0">
+                                        Preview
+                                      </span>
+                                    ) : isLocked ? (
+                                      <span className="px-2 py-0.5 rounded-full bg-pink-100/80 text-pink-500 text-[9px] font-bold shrink-0 flex items-center gap-1">
+                                        <Lock className="w-2.5 h-2.5" />
+                                        <span>Pago</span>
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* =======================================================================
+           * TAB: MIS CURSOS COMPRADOS (PERFIL DE ALUMNA & ACCESO A MASTERCLASSES)
+           * Permite ver cursos comprados, progreso y adquirir nuevas formaciones en Soles
+           * ======================================================================= */}
+          {activeTab === 'my-courses' && (
+            <div className="space-y-7">
+              {/* Header Profile & Purchased Courses Hero */}
+              <div className="rounded-3xl bg-white border border-pink-100/90 p-6 sm:p-8 shadow-[0_12px_32px_rgba(227,27,109,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBF3] text-[10px] font-black text-[#E31B6D] uppercase tracking-wider mb-2">
                     <Sparkles className="w-3 h-3" />
-                    Aula Virtual &amp; Streaming Supabase
+                    Mi Perfil &amp; Formación Jurídica
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828]">
-                    {selectedCourseForClassroom?.title || 'Litigio de Alto Impacto'}
+                    Mis Cursos Comprados
                   </h1>
-                  <p className="text-xs text-[#6A5A6D] mt-1 max-w-2xl">
-                    Docente: <strong className="text-[#E31B6D]">{selectedCourseForClassroom?.instructor || 'Roxana Rivera'}</strong> · Acceso permanente con lecciones en video HD y materiales descargables en Word.
+                  <p className="text-xs text-[#6A5A6D] mt-1 max-w-2xl leading-relaxed">
+                    Hola <strong className="text-[#E31B6D]">{profile.full_name || supabaseUser.email?.split('@')[0]}</strong>. Aquí tienes acceso inmediato y de por vida a todas tus masterclasses adquiridas con videos en streaming HD y plantillas procesales en Word.
                   </p>
                 </div>
 
-                {/* Course Switcher if multiple courses exist */}
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedCourseForClassroom?.id || ''}
-                    onChange={(e) => {
-                      const found = courses.find((c) => c.id === e.target.value);
-                      if (found) {
-                        setSelectedCourseForClassroom(found);
-                        if (found.modules?.[0]?.lessons?.[0]) {
-                          setActiveLesson(found.modules[0].lessons[0]);
-                        }
-                      }
-                    }}
-                    className="px-4 py-2 rounded-full bg-[#FFF0F6] border border-pink-200 text-xs font-bold text-[#2A1828] focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30"
-                  >
-                    {courses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex items-center gap-3">
+                  <div className="px-5 py-3 rounded-2xl bg-[#FFF5F9] border border-pink-100 text-center">
+                    <span className="text-2xl font-serif italic font-black text-[#E31B6D]">
+                      {userEnrollments.length}
+                    </span>
+                    <span className="block text-[10px] font-bold text-[#A08A9E] uppercase">
+                      Cursos Comprados
+                    </span>
+                  </div>
+                  <div className="px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-center">
+                    <span className="text-sm font-black text-emerald-700">Acceso</span>
+                    <span className="block text-[10px] font-bold text-emerald-600 uppercase">
+                      De por Vida
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Main Video Classroom Layout: Player (Left) + Curriculum/Playlist (Right) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Left 8 Cols: Video Player & Lesson Details */}
-                <div className="lg:col-span-8 space-y-4">
-                  {/* Video Player Card */}
-                  <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-pink-200/40 relative aspect-video flex flex-col justify-end">
-                    {/* HTML5 Video Element */}
-                    <video
-                      ref={videoPlayerRef}
-                      key={activeLesson?.id || 'default-player'}
-                      controls
-                      playsInline
-                      className="w-full h-full object-cover"
-                      poster={selectedCourseForClassroom?.cover_image}
-                    >
-                      <source
-                        src={
-                          activeLesson?.video_url
-                            ? getSupabaseVideoUrl(activeLesson.video_url)
-                            : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-                        }
-                        type="video/mp4"
-                      />
-                      Tu navegador no soporta reproducción de video HTML5.
-                    </video>
+              {/* Grid of Purchased Courses */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-serif italic font-bold text-[#2A1828]">
+                    Tus Masterclasses Disponibles
+                  </h2>
+                  <span className="text-xs text-[#E31B6D] font-bold">
+                    {userEnrollments.length} Comprados
+                  </span>
+                </div>
 
-                    {/* Supabase Storage Pill Overlay */}
-                    <div className="absolute top-4 left-4 z-20 pointer-events-none">
-                      <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-black uppercase text-pink-300 border border-white/10 flex items-center gap-1.5 shadow-md">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        Supabase Storage CDN · 4K
-                      </span>
+                {userEnrollments.length === 0 ? (
+                  <div className="p-8 sm:p-12 rounded-3xl bg-white border border-pink-100 text-center space-y-4 shadow-sm">
+                    <div className="w-16 h-16 rounded-3xl bg-[#FFF0F6] border border-pink-200 text-[#E31B6D] flex items-center justify-center mx-auto">
+                      <ShoppingBag className="w-8 h-8" />
                     </div>
-
-                    {/* Storage Path Indicator */}
-                    {activeLesson?.storage_path && (
-                      <div className="absolute top-4 right-4 z-20 pointer-events-none hidden sm:block">
-                        <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[9px] font-mono text-slate-300 border border-white/10">
-                          bucket: {activeLesson.storage_path}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Below Player Action & Meta Bar */}
-                  <div className="bg-white rounded-3xl p-6 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-pink-100">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2.5 py-0.5 rounded-full bg-[#FFEBF3] text-[10px] font-black text-[#E31B6D] uppercase">
-                            {activeLesson?.duration || '20 min'}
-                          </span>
-                          <span className="text-xs text-[#A08A9E]">
-                            Módulo: {selectedCourseForClassroom?.modules?.[0]?.title || 'Arquitectura Procesal'}
-                          </span>
-                        </div>
-                        <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
-                          {activeLesson?.title || 'Clase 01: El Hecho Relevante vs. La Paja Procesal'}
-                        </h2>
-                      </div>
-
-                      {/* Lesson Completed Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => activeLesson && toggleLessonCompleted(activeLesson.id)}
-                        className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
-                          activeLesson && completedLessonIds.has(activeLesson.id)
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.3)]'
-                        }`}
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>
-                          {activeLesson && completedLessonIds.has(activeLesson.id)
-                            ? 'Lección Completada ✓'
-                            : 'Marcar como Vista'}
-                        </span>
-                      </button>
-                    </div>
-
-                    {/* Lesson Notes & Overview */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-[#A08A9E]">
-                        Resumen &amp; Guía de Litigación
-                      </h4>
-                      <p className="text-xs text-[#6A5A6D] leading-relaxed">
-                        {activeLesson?.notes ||
-                          'En esta lección aprenderás a separar los hechos irrelevantes y concentrar el 100% de la persuasión en la tesis principal de litigio. Incluye minutas de alegato en Word y modelo de examen directo descargable.'}
+                    <div className="max-w-md mx-auto space-y-1">
+                      <h3 className="text-lg font-serif italic font-bold text-[#2A1828]">
+                        Aún no tienes cursos comprados en tu cuenta
+                      </h3>
+                      <p className="text-xs text-[#6A5A6D]">
+                        Invierte en tu excelencia procesal adquiriendo tu primera masterclass clínica con Roxana Rivera. Cada curso cuesta solo S/. 50 PEN con acceso ilimitado.
                       </p>
-
-                      {/* Downloadable Materials */}
-                      <div className="pt-2 flex flex-wrap gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => showToast('Descargando: Plantilla_Matriz_Factica_Word.docx')}
-                          className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Plantilla Matriz Fáctica (.docx)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => showToast('Descargando: Esquema_Objeciones_PDF.pdf')}
-                          className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Checklist Objeciones (.pdf)</span>
-                        </button>
-                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('courses')}
+                      className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs shadow-md cursor-pointer inline-flex items-center gap-2 hover:brightness-105"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Ver Catálogo de Cursos</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userEnrollments.map((enr) => {
+                      const course = courses.find((c) => c.id === enr.course_id);
+                      if (!course) return null;
+                      return (
+                        <div
+                          key={enr.id}
+                          className="bg-white rounded-3xl border border-pink-100/90 hover:border-pink-200/90 overflow-hidden shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_16px_36px_rgba(227,27,109,0.1)] transition-all flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="relative aspect-[16/10] bg-pink-50 overflow-hidden">
+                              <img
+                                src={course.cover_image}
+                                alt={course.title}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Compra Confirmada</span>
+                              </div>
+                              <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold">
+                                {course.duration}
+                              </div>
+                            </div>
+
+                            <div className="p-5 space-y-3">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-[#E31B6D]">
+                                {course.category} · {course.level}
+                              </span>
+                              <h3 className="font-serif italic font-bold text-base text-[#2A1828] leading-snug line-clamp-2">
+                                {course.title}
+                              </h3>
+                              <p className="text-xs text-[#6A5A6D]">
+                                Docente: <strong>{course.instructor}</strong>
+                              </p>
+
+                              <div className="pt-2 border-t border-pink-100/80 flex items-center justify-between text-xs">
+                                <div>
+                                  <span className="text-[10px] text-[#A08A9E] uppercase font-bold block">
+                                    Monto Pagado
+                                  </span>
+                                  <span className="font-serif italic font-black text-[#E31B6D] text-sm">
+                                    S/. {enr.amount_paid} PEN
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-[#A08A9E] uppercase font-bold block">
+                                    Método
+                                  </span>
+                                  <span className="font-bold text-[#2A1828] text-xs uppercase">
+                                    {enr.payment_method}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-5 pt-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCourseForClassroom(course);
+                                if (course.modules?.[0]?.lessons?.[0]) {
+                                  setActiveLesson(course.modules[0].lessons[0]);
+                                }
+                                setActiveTab('classroom');
+                              }}
+                              className="w-full py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-[0_8px_20px_rgba(227,27,109,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all"
+                            >
+                              <PlayCircle className="w-4 h-4" />
+                              <span>Entrar al Aula Virtual</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Section: Explorar Más Cursos del Catálogo */}
+              <div className="pt-6 border-t border-pink-100/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-serif italic font-bold text-lg text-[#2A1828]">
+                      Explora Nuevas Masterclasses para Adquirir
+                    </h3>
+                    <p className="text-xs text-[#6A5A6D]">
+                      Especialízate con formación clínica y minutas de alegato listas para usar
+                    </p>
                   </div>
                 </div>
 
-                {/* Right 4 Cols: Interactive Course Curriculum / Playlist */}
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="bg-white rounded-3xl p-6 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-pink-100">
-                      <div>
-                        <h3 className="font-serif italic font-bold text-base text-[#2A1828]">
-                          Temario &amp; Videos
-                        </h3>
-                        <p className="text-[11px] text-[#A08A9E]">
-                          {completedLessonIds.size} clases vistas
-                        </p>
-                      </div>
-                      <span className="px-3 py-1 rounded-full bg-[#FFF0F6] text-[#E31B6D] font-black text-xs">
-                        100% HD
-                      </span>
-                    </div>
-
-                    {/* Modules & Lessons Tree */}
-                    <div className="space-y-4">
-                      {(selectedCourseForClassroom?.modules || []).map((mod, modIdx) => (
-                        <div key={mod.id || modIdx} className="space-y-2">
-                          <div className="px-3 py-2 rounded-2xl bg-[#FFF5F9] border border-pink-100 text-xs font-black text-[#2A1828]">
-                            {mod.title}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {courses
+                    .filter((c) => !userEnrollments.some((e) => e.course_id === c.id))
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        className="bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="relative aspect-[16/10] bg-pink-50">
+                            <img
+                              src={c.cover_image}
+                              alt={c.title}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D]">
+                              {c.category}
+                            </div>
+                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-[#E31B6D] text-white text-[10px] font-black">
+                              S/. {c.price} PEN
+                            </div>
                           </div>
 
-                          <div className="space-y-1 pl-1">
-                            {mod.lessons.map((les) => {
-                              const isCurrent = activeLesson?.id === les.id;
-                              const isDone = completedLessonIds.has(les.id);
-                              return (
-                                <button
-                                  key={les.id}
-                                  type="button"
-                                  onClick={() => setActiveLesson(les)}
-                                  className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
-                                    isCurrent
-                                      ? 'bg-gradient-to-r from-[#FFF0F6] to-[#FFE4EF] border border-pink-200/80 shadow-xs'
-                                      : 'hover:bg-pink-50/60'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                                        isDone
-                                          ? 'bg-emerald-500 text-white'
-                                          : isCurrent
-                                          ? 'bg-[#E31B6D] text-white'
-                                          : 'bg-pink-100 text-[#E31B6D]'
-                                      }`}
-                                    >
-                                      {isDone ? (
-                                        <Check className="w-3.5 h-3.5" />
-                                      ) : (
-                                        <Play className="w-3 h-3 fill-current ml-0.5" />
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p
-                                        className={`text-xs font-bold leading-tight truncate ${
-                                          isCurrent ? 'text-[#E31B6D]' : 'text-[#2A1828]'
-                                        }`}
-                                      >
-                                        {les.title}
-                                      </p>
-                                      <span className="text-[10px] text-[#A08A9E]">{les.duration}</span>
-                                    </div>
-                                  </div>
-
-                                  {les.is_free_preview && (
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold shrink-0">
-                                      Preview
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
+                          <div className="p-5 space-y-2">
+                            <h4 className="font-serif italic font-bold text-sm text-[#2A1828] line-clamp-2">
+                              {c.title}
+                            </h4>
+                            <p className="text-xs text-[#6A5A6D] line-clamp-2">{c.description}</p>
+                            <div className="flex items-center justify-between pt-2 border-t border-pink-100 text-xs">
+                              <span className="text-[#A08A9E] font-medium">{c.duration}</span>
+                              <span className="text-[#E31B6D] font-bold font-serif italic text-base">
+                                S/. {c.price} PEN
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+
+                        <div className="p-5 pt-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCheckout(c)}
+                            className="w-full py-3 rounded-full bg-gradient-to-r from-[#FFF0F6] to-[#FFEBF3] hover:from-[#FFE4EF] hover:to-[#FFD6E8] text-[#E31B6D] border border-pink-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Comprar por S/. {c.price} PEN</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
@@ -1679,7 +2145,7 @@ export function DashboardApp() {
                           {stu.course_title}
                         </td>
                         <td className="py-4 font-serif italic font-black text-[#E31B6D]">
-                          ${stu.amount_paid} USD (Pago Único)
+                          S/. {stu.amount_paid} PEN (Pago Único)
                         </td>
                         <td className="py-4 text-[#6A5A6D]">{stu.city}</td>
                         <td className="py-4">
@@ -1743,7 +2209,7 @@ export function DashboardApp() {
                         </h4>
                         <div className="flex items-baseline justify-between pt-2">
                           <span className="text-2xl font-serif italic font-black text-[#E31B6D]">
-                            ${revenue.toLocaleString()} USD
+                            S/. {revenue.toLocaleString()} PEN
                           </span>
                           <span className="text-xs text-[#6A5A6D] font-bold">
                             {c.students_count} alumnas
@@ -2039,6 +2505,18 @@ export function DashboardApp() {
         }}
         onSave={handleSaveUser}
         userToEdit={userToEdit}
+      />
+
+      {/* Course Checkout Modal (Compra en Soles PEN con Yape/Plin/Tarjeta) */}
+      <CourseCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setCourseToBuy(null);
+        }}
+        onSuccess={handleCheckoutSuccess}
+        course={courseToBuy}
+        currentUserId={supabaseUser?.id || ''}
       />
     </div>
   );

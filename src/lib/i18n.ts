@@ -70,7 +70,7 @@ export const DICTIONARY = {
         'Aprende el arte de persuadir en tribunales, construir una teoría del caso imbatible y proyectar una presencia magnética. La formación clínica de élite que la facultad nunca te enseñó.',
       ctaPrimary: 'Comenzar Masterclass →',
       ctaSecondary: 'Ver clase de muestra',
-      guarantee: 'Inversión desde $39 USD/mes · 14 días de garantía incondicional',
+      guarantee: 'Pago único por curso desde S/. 50 PEN · Acceso de por vida · 14 días de garantía incondicional',
       pills: {
         courtrooms: 'Salas de audiencia reales',
         models: '15 modelos en Word',
@@ -338,7 +338,7 @@ export const DICTIONARY = {
         'Master the art of courtroom persuasion, build an unbeatable case theory, and project magnetic authority. The elite clinical training law school never taught you.',
       ctaPrimary: 'Start Masterclass →',
       ctaSecondary: 'Watch sample class',
-      guarantee: 'Starting at $39 USD/mo · 14-day unconditional money-back guarantee',
+      guarantee: 'One-time course purchase from S/. 50 PEN · Lifetime access · 14-day money-back guarantee',
       pills: {
         courtrooms: 'Real courtroom sessions',
         models: '15 editable Word templates',
