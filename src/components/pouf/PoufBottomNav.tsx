@@ -34,7 +34,8 @@ export function PoufBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-3 inset-x-3 z-40 bg-white/95 backdrop-blur-md rounded-[28px] p-1.5 cushion-card border border-pink-100 grid grid-flow-col auto-cols-fr gap-1 shadow-2xl"
+      className="md:hidden fixed bottom-2.5 inset-x-2.5 z-40 bg-white/95 backdrop-blur-md rounded-[26px] p-1 cushion-card border border-pink-100 grid grid-flow-col auto-cols-fr gap-1 shadow-2xl"
+      style={{ paddingBottom: 'max(4px, env(safe-area-inset-bottom, 4px))' }}
       aria-label="Navegación Móvil Rápida"
     >
       {tabs.map((tab) => {
@@ -44,14 +45,14 @@ export function PoufBottomNav() {
             key={tab.id}
             href={tab.href}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-col items-center justify-center py-2 px-1 min-h-[50px] rounded-[20px] font-pouf text-[11px] font-black transition-all duration-150 active:translate-y-[2px] ${
+            className={`flex flex-col items-center justify-center py-1.5 px-0.5 min-h-[46px] rounded-[18px] font-pouf text-[10px] sm:text-[11px] font-black transition-all duration-150 active:translate-y-[2px] ${
               isActive
                 ? 'bg-pink text-ink cushion-control-active'
                 : 'text-muted hover:text-ink hover:bg-pink/20'
             }`}
           >
-            <span className="text-base leading-none mb-1">{tab.icon}</span>
-            <span className="leading-none">{tab.label}</span>
+            <span className="text-sm leading-none mb-0.5">{tab.icon}</span>
+            <span className="leading-tight">{tab.label}</span>
           </a>
         );
       })}
@@ -59,10 +60,10 @@ export function PoufBottomNav() {
       <a
         href="#precios"
         onClick={() => setActiveTab('precios')}
-        className="flex flex-col items-center justify-center py-2 px-1 min-h-[50px] rounded-[20px] font-pouf text-[11px] font-black bg-[#E31B6D] text-white cushion-control active:translate-y-[2px] transition-all"
+        className="flex flex-col items-center justify-center py-1.5 px-0.5 min-h-[46px] rounded-[18px] font-pouf text-[10px] sm:text-[11px] font-black bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-md cushion-control active:translate-y-[2px] transition-all"
       >
-        <span className="text-base leading-none mb-1">✦</span>
-        <span className="leading-none">{lang === 'es' ? 'Unirme' : 'Join'}</span>
+        <span className="text-sm leading-none mb-0.5">✦</span>
+        <span className="leading-tight">{lang === 'es' ? 'Unirme' : 'Join'}</span>
       </a>
     </nav>
   );

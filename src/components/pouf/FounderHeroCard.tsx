@@ -31,7 +31,7 @@ export function FounderHeroCard({
 
   return (
     <div
-      className={`relative w-full max-w-[350px] sm:max-w-[370px] mx-auto rounded-[38px] bg-white cushion-card border border-pink-100 overflow-hidden transition-all duration-300 hover:translate-y-[-4px] select-none shadow-2xl ${className}`}
+      className={`relative w-full max-w-[310px] xs:max-w-[340px] sm:max-w-[370px] mx-auto rounded-[32px] sm:rounded-[38px] bg-white cushion-card border border-pink-100 overflow-hidden transition-all duration-300 hover:translate-y-[-4px] select-none shadow-2xl ${className}`}
     >
       {/* Top Photo Frame */}
       <div className="relative aspect-[4/4.6] w-full bg-[#F5EBF0] overflow-hidden">
@@ -87,7 +87,7 @@ export function FounderHeroCard({
       </div>
 
       {/* Bottom Card Body (White area with information) */}
-      <div className="p-6 pt-1 space-y-4 text-left bg-white relative z-20">
+      <div className="p-4 sm:p-6 pt-1 space-y-3 sm:space-y-4 text-left bg-white relative z-20">
         {/* Name with Verified Checkmark */}
         <div>
           <div className="flex items-center gap-1.5">

@@ -63,7 +63,7 @@ export function PoufPricing() {
                   {billing === 'single' ? t.card1.priceSingle : t.card1.priceInstallments}
                 </span>
                 <span className="text-xs font-bold text-muted">
-                  {billing === 'single' ? `USD · ${t.card1.pricePeriodSingle}` : `USD · ${t.card1.pricePeriod}`}
+                  {billing === 'single' ? `PEN · ${t.card1.pricePeriodSingle}` : `PEN · ${t.card1.pricePeriod}`}
                 </span>
               </div>
             </div>
@@ -115,7 +115,7 @@ export function PoufPricing() {
                   {billing === 'single' ? t.card2.priceSingle : t.card2.priceInstallments}
                 </span>
                 <span className="text-xs font-bold text-muted">
-                  {billing === 'single' ? `USD · ${t.card2.pricePeriodSingle}` : `USD · ${t.card2.pricePeriod}`}
+                  {billing === 'single' ? `PEN · ${t.card2.pricePeriodSingle}` : `PEN · ${t.card2.pricePeriod}`}
                 </span>
               </div>
             </div>

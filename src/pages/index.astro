@@ -20,8 +20,8 @@ import { SpotifyFloatingPlayer } from '@/components/pouf/SpotifyFloatingPlayer';
   {/* 1st-Pouf Floating Capsule Sticky Navbar (follows when scrolling) */}
   <PoufNavbar client:load />
 
-  {/* Main 1st-Pouf Claymorphic Landing Flow with top padding for fixed navbar */}
-  <div class="pt-20 sm:pt-24 flex flex-col">
+  {/* Main 1st-Pouf Claymorphic Landing Flow with top padding for fixed navbar & bottom padding for mobile bar */}
+  <div class="pt-16 sm:pt-24 flex flex-col pb-24 sm:pb-0">
     {/* 1. 1st-Pouf Hero with 3D Cushion Cinema Player */}
     <PoufHero client:visible />
 

@@ -27,16 +27,19 @@ export function Heading({ children, level = 2, className = '' }: HeadingProps) {
 export function Highlight({
   children,
   tone = 'pink',
+  className = '',
 }: {
   children: ReactNode;
   tone?: Tone;
+  className?: string;
 }) {
   return (
     <span
       className={cx(
         'pouf-highlight inline-block px-3 py-0.5 rounded-[12px] text-[var(--on-accent)] bg-[var(--tone,var(--pink))]',
         '[box-shadow:inset_0_-4px_0_rgba(0,0,0,0.1)] font-black',
-        toneClass(tone)
+        toneClass(tone),
+        className
       )}
     >
       {children}
