@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { sileo } from 'sileo';
 import {
   purchaseCourse,
   subscribeUserToPlan,
+  getPaymentSettings,
   type Course,
   type Enrollment,
   type SubscriptionPlan,
   type UserLevel,
+  type PaymentSettings,
 } from '@/lib/supabase';
 import {
   X,
@@ -21,6 +23,7 @@ import {
   Loader2,
   HelpCircle,
   Crown,
+  MessageCircle,
 } from 'lucide-react';
 
 interface CourseCheckoutModalProps {
@@ -44,12 +47,19 @@ export function CourseCheckoutModal({
 
   const isSubscription = Boolean(plan);
   const [paymentMethod, setPaymentMethod] = useState<'yape' | 'card' | 'transfer'>('yape');
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(getPaymentSettings());
   const [operationCode, setOperationCode] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardHolder, setCardHolder] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPaymentSettings(getPaymentSettings());
+    }
+  }, [isOpen]);
 
   const priceInSoles = plan ? plan.price : course?.price || 50;
   const comparePrice = plan
@@ -284,14 +294,22 @@ export function CourseCheckoutModal({
                 <div>
                   <p className="text-[10px] text-[#A08A9E] uppercase font-bold">Número Yape / Plin</p>
                   <p className="text-base font-black text-[#2A1828] font-mono tracking-wide">
-                    987 654 321
+                    {paymentSettings.yape_phone || '987 654 321'}
                   </p>
                   <p className="text-[10px] text-[#742284] font-medium">
-                    Titular: Roxana Rivera / Girls &amp; Law
+                    Titular: {paymentSettings.account_holder || 'Roxana Rivera / Girls & Law'}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-200 text-[#742284]">
-                  <QrCode className="w-7 h-7" />
+                <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-200 text-[#742284] overflow-hidden">
+                  {paymentSettings.qr_image_url ? (
+                    <img
+                      src={paymentSettings.qr_image_url}
+                      alt="QR Yape"
+                      className="w-full h-full object-contain p-1"
+                    />
+                  ) : (
+                    <QrCode className="w-7 h-7" />
+                  )}
                 </div>
               </div>
 
@@ -377,10 +395,10 @@ export function CourseCheckoutModal({
                 Cuentas Bancarias Oficiales
               </span>
               <div className="p-3 bg-white rounded-2xl border border-blue-100 text-xs space-y-1">
-                <p className="font-bold text-[#2A1828]">Banco de Crédito del Perú (BCP Soles)</p>
-                <p className="font-mono text-xs text-[#0039A6] font-bold">193-9823412-0-45</p>
-                <p className="text-[10px] text-[#A08A9E] font-mono">CCI: 00219300982341204518</p>
-                <p className="text-[10px] text-[#6A5A6D]">Titular: Girls &amp; Law S.A.C.</p>
+                <p className="font-bold text-[#2A1828]">{paymentSettings.bank_name || 'Banco de Crédito del Perú (BCP Soles)'}</p>
+                <p className="font-mono text-xs text-[#0039A6] font-bold">{paymentSettings.account_number || '193-9823412-0-45'}</p>
+                <p className="text-[10px] text-[#A08A9E] font-mono">CCI: {paymentSettings.cci || '00219300982341204518'}</p>
+                <p className="text-[10px] text-[#6A5A6D]">Titular: {paymentSettings.account_holder || 'Girls & Law S.A.C.'}</p>
               </div>
 
               <div>
@@ -396,6 +414,25 @@ export function CourseCheckoutModal({
                 />
               </div>
             </div>
+          )}
+
+          {/* WhatsApp Direct Confirmation Button */}
+          {paymentSettings.whatsapp_number && (
+            <a
+              href={`https://wa.me/${paymentSettings.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Hola Roxana, acabo de realizar mi matrícula en Girls & Law para "${
+                  plan ? plan.name : course?.title
+                }" por S/. ${priceInSoles} PEN.${
+                  operationCode ? ` Mi número de operación es: ${operationCode}.` : ''
+                } Por favor confirmarme el acceso.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 px-4 rounded-2xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <span>¿Dudas con tu pago? Enviar comprobante a Roxana por WhatsApp</span>
+            </a>
           )}
 
           {/* Security & Guarantees */}

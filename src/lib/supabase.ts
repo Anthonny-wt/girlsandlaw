@@ -95,6 +95,8 @@ export interface Enrollment {
 
 export interface Student {
   id: string;
+  user_id?: string;
+  course_id?: string;
   name: string;
   email: string;
   avatar?: string;
@@ -104,6 +106,53 @@ export interface Student {
   progress: number;
   status: 'Activa' | 'Completado' | 'En Pausa';
   city: string;
+  role?: UserRole;
+  level?: UserLevel;
+  phone?: string;
+}
+
+// Configuración de la Plataforma de Cobro (Yape, Plin, Banco, WhatsApp de Roxana Rivera)
+export interface PaymentSettings {
+  account_holder: string;
+  yape_phone: string;
+  qr_image_url?: string;
+  bank_name: string;
+  account_number: string;
+  cci: string;
+  whatsapp_number: string;
+  instructions: string;
+}
+
+export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
+  account_holder: 'Roxana Rivera / Girls & Law',
+  yape_phone: '987 654 321',
+  qr_image_url: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=00020101021126500010pe.yape01099876543215204000053036045802PE5913Roxana%20Rivera6004Lima6304',
+  bank_name: 'Banco de Crédito del Perú (BCP Soles)',
+  account_number: '193-9823412-0-45',
+  cci: '00219300982341204518',
+  whatsapp_number: '987654321',
+  instructions: 'Realiza la transferencia por Yape, Plin o BCP e ingresa tu código de 6 dígitos. También puedes enviar tu comprobante directamente por WhatsApp.',
+};
+
+export function getPaymentSettings(): PaymentSettings {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('girls_and_law_payment_settings_v1');
+    if (saved) {
+      try {
+        return { ...DEFAULT_PAYMENT_SETTINGS, ...JSON.parse(saved) };
+      } catch {
+        // fallback
+      }
+    }
+  }
+  return DEFAULT_PAYMENT_SETTINGS;
+}
+
+export function savePaymentSettings(settings: PaymentSettings): PaymentSettings {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('girls_and_law_payment_settings_v1', JSON.stringify(settings));
+  }
+  return settings;
 }
 
 // Sample video URLs (high quality legal / lecture streams for testing)
@@ -1070,6 +1119,8 @@ export async function getRealStudents(): Promise<Student[]> {
 
         return {
           id: e.id,
+          user_id: e.user_id,
+          course_id: e.course_id,
           name: prof?.full_name || prof?.email?.split('@')[0] || 'Alumna Registrada',
           email: prof?.email || 'alumna@continental.edu.pe',
           course_title: crs?.title || 'Masterclass',
@@ -1078,6 +1129,9 @@ export async function getRealStudents(): Promise<Student[]> {
           progress: e.progress_percent || 0,
           status: e.status === 'completed' ? 'Completado' : 'Activa',
           city: prof?.phone || 'Perú',
+          role: prof?.role || 'alumna',
+          level: prof?.level || 'inicial',
+          phone: prof?.phone || '',
         };
       });
     }
@@ -1087,6 +1141,8 @@ export async function getRealStudents(): Promise<Student[]> {
     if (alumnas.length > 0) {
       return alumnas.map((p) => ({
         id: p.id,
+        user_id: p.id,
+        course_id: undefined,
         name: p.full_name || p.email.split('@')[0],
         email: p.email,
         course_title: 'Sin curso asignado aún',
@@ -1101,6 +1157,9 @@ export async function getRealStudents(): Promise<Student[]> {
         progress: 0,
         status: 'Activa',
         city: p.phone || 'Perú',
+        role: p.role,
+        level: p.level,
+        phone: p.phone || '',
       }));
     }
   } catch (err) {
@@ -1109,6 +1168,28 @@ export async function getRealStudents(): Promise<Student[]> {
 
   // Si no hay datos en la BD, devolver lista vacía ("si no hay datos que veamos sin datos")
   return [];
+}
+
+// Revocar matrícula de un curso
+export async function revokeEnrollment(enrollmentId: string): Promise<boolean> {
+  try {
+    await supabase.from('enrollments').delete().eq('id', enrollmentId);
+  } catch {
+    // offline
+  }
+
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem(LOCAL_STORAGE_ENROLLMENTS_KEY);
+    if (raw) {
+      try {
+        const all: Enrollment[] = JSON.parse(raw);
+        localStorage.setItem(LOCAL_STORAGE_ENROLLMENTS_KEY, JSON.stringify(all.filter((e) => e.id !== enrollmentId)));
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return true;
 }
 
 export function isUserEnrolledInCourse(

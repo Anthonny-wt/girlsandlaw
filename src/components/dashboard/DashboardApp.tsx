@@ -26,14 +26,19 @@ import {
   type UserRole,
   type UserLevel,
   type Enrollment,
+  type PaymentSettings,
   getUserEnrollments,
   enrollUserInCourse,
+  revokeEnrollment,
   isUserEnrolledInCourse,
+  getPaymentSettings,
+  savePaymentSettings,
 } from '@/lib/supabase';
 import { AuthCard } from './AuthCard';
 import { CourseFormModal } from './CourseFormModal';
 import { UserFormModal } from './UserFormModal';
 import { CourseCheckoutModal } from './CourseCheckoutModal';
+import { StudentSettingsModal } from './StudentSettingsModal';
 import {
   LayoutDashboard,
   BookOpen,
@@ -83,6 +88,13 @@ import {
   Upload,
   Loader2,
   UserPlus,
+  Settings,
+  Building2,
+  MessageCircle,
+  Copy,
+  Save,
+  Phone,
+  CreditCard,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -100,8 +112,15 @@ export function DashboardApp() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'courses' | 'classroom' | 'my-courses' | 'subscriptions' | 'students' | 'users'
+    'dashboard' | 'courses' | 'classroom' | 'my-courses' | 'subscriptions' | 'students' | 'users' | 'billing'
   >('dashboard');
+
+  // Student Settings Modal State
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [studentToManage, setStudentToManage] = useState<Student | null>(null);
+
+  // Roxana's Payment Settings State
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(getPaymentSettings());
 
   // Sidebar toggle for mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -538,6 +557,62 @@ export function DashboardApp() {
     }
   };
 
+  // Student Settings Handlers (Gestión individual de cada alumna)
+  const handleEnrollStudentInCourse = async (userId: string, courseId: string) => {
+    const course = courses.find((c) => c.id === courseId);
+    await enrollUserInCourse({
+      userId,
+      courseId,
+      amountPaid: course?.price || 0,
+      paymentMethod: 'Asignación Admin',
+    });
+    const realStudents = await getRealStudents();
+    setStudents(realStudents);
+    if (supabaseUser && userId === supabaseUser.id) {
+      const enr = await getUserEnrollments(supabaseUser.id, profile?.level);
+      setUserEnrollments(enr);
+    }
+  };
+
+  const handleRevokeStudentEnrollment = async (enrollmentId: string) => {
+    await revokeEnrollment(enrollmentId);
+    const realStudents = await getRealStudents();
+    setStudents(realStudents);
+    if (supabaseUser) {
+      const enr = await getUserEnrollments(supabaseUser.id, profile?.level);
+      setUserEnrollments(enr);
+    }
+  };
+
+  const handleUpdateStudentProfile = async (
+    userId: string,
+    data: { level: UserLevel; role: UserRole; full_name?: string; phone?: string }
+  ) => {
+    await updateUserProfile({
+      id: userId,
+      full_name: data.full_name,
+      role: data.role,
+      level: data.level,
+      phone: data.phone,
+    });
+    const updatedUsers = await getAllProfiles();
+    setUserList(updatedUsers);
+    const realStudents = await getRealStudents();
+    setStudents(realStudents);
+    if (supabaseUser && userId === supabaseUser.id) {
+      setProfile((prev) => (prev ? { ...prev, ...data } : null));
+    }
+  };
+
+  const handleSavePaymentSettings = (newSettings: PaymentSettings) => {
+    savePaymentSettings(newSettings);
+    setPaymentSettings(newSettings);
+    sileo.success({
+      title: 'Plataforma de Cobro Actualizada',
+      description: 'Los datos de Yape, BCP y WhatsApp de Roxana se guardaron con éxito y se reflejan en el checkout.',
+    });
+  };
+
   // Classroom lesson toggle
   const toggleLessonCompleted = (lessonId: string) => {
     setCompletedLessonIds((prev) => {
@@ -669,31 +744,216 @@ export function DashboardApp() {
 
           {/* Navigation Links */}
           <div className="p-4 space-y-6">
-            {/* Group 1: Formación & Campus */}
-            <div>
-              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
-                Campus &amp; Cursos
-              </p>
-              <nav className="space-y-1.5">
-                {hasStaffPrivileges ? (
+            {/* Si es Admin / Staff (Administrador, Sub Admin, Profesora) */}
+            {hasStaffPrivileges ? (
+              <div className="space-y-5">
+                <div>
+                  <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
+                    Panel de Administración
+                  </p>
+                  <nav className="space-y-1.5">
+                    {/* 1. Dashboard */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('dashboard');
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                        activeTab === 'dashboard'
+                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                        <span>Dashboard General</span>
+                      </div>
+                    </button>
+
+                    {/* 2. Cursos */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('courses');
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                        activeTab === 'courses'
+                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <BookOpen className={`w-4 h-4 ${activeTab === 'courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                        <span>Gestión de Cursos</span>
+                      </div>
+                      {totalCourses > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
+                          {totalCourses}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* 3. Alumnas & Ventas */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('students');
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                        activeTab === 'students'
+                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                        <span>Alumnas &amp; Ventas</span>
+                      </div>
+                      {students.length > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
+                          {students.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* 4. Planes & Suscripciones */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('subscriptions');
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                        activeTab === 'subscriptions'
+                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Crown className={`w-4 h-4 ${activeTab === 'subscriptions' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                        <span>Planes &amp; Suscripciones</span>
+                      </div>
+                    </button>
+
+                    {/* 5. Roles & Equipo */}
+                    {hasAdminPrivileges && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('users');
+                          setIsSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                          activeTab === 'users'
+                            ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                            : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Shield className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                          <span>Roles &amp; Equipo</span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* 6. Plataforma de Cobro (Roxana) */}
+                    {hasAdminPrivileges && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('billing');
+                          setIsSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                          activeTab === 'billing'
+                            ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                            : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <QrCode className={`w-4 h-4 ${activeTab === 'billing' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                          <span>Plataforma de Cobro</span>
+                        </div>
+                      </button>
+                    )}
+                  </nav>
+                </div>
+
+                {/* Subsección: Modo Alumna (Preview) */}
+                <div className="pt-3 border-t border-pink-100">
+                  <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
+                    Vista Alumna
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('dashboard');
+                      setActiveTab('classroom');
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'dashboard'
+                      activeTab === 'classroom'
                         ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
                         : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                      <span>Dashboard General</span>
+                      <GraduationCap className={`w-4 h-4 ${activeTab === 'classroom' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Ir al Aula Virtual (Preview)</span>
                     </div>
                   </button>
-                ) : (
+                </div>
+              </div>
+            ) : (
+              /* Si es Alumna */
+              <div>
+                <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
+                  Mi Formación Jurídica
+                </p>
+                <nav className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('classroom');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'classroom'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <GraduationCap className={`w-4 h-4 ${activeTab === 'classroom' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Mi Aula Virtual</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('my-courses');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'my-courses'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShoppingBag className={`w-4 h-4 ${activeTab === 'my-courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Mis Cursos Comprados</span>
+                    </div>
+                    {userEnrollments.length > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E31B6D] text-white">
+                        {userEnrollments.length}
+                      </span>
+                    )}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -710,120 +970,23 @@ export function DashboardApp() {
                       <BookOpen className={`w-4 h-4 ${activeTab === 'courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
                       <span>Catálogo de Cursos</span>
                     </div>
-                    {totalCourses > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
-                        {totalCourses}
-                      </span>
-                    )}
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('classroom');
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'classroom'
-                      ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                      : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <GraduationCap className={`w-4 h-4 ${activeTab === 'classroom' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                    <span>Mi Aula Virtual</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('my-courses');
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'my-courses'
-                      ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                      : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <ShoppingBag className={`w-4 h-4 ${activeTab === 'my-courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                    <span>Mis Cursos Comprados</span>
-                  </div>
-                  {userEnrollments.length > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E31B6D] text-white">
-                      {userEnrollments.length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('subscriptions');
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'subscriptions'
-                      ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                      : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Crown className={`w-4 h-4 ${activeTab === 'subscriptions' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                    <span>Planes &amp; Suscripciones</span>
-                  </div>
-                </button>
-              </nav>
-            </div>
-
-            {/* Group 2: Administración & Equipo (Solo Administradoras) */}
-            {hasAdminPrivileges && (
-              <div>
-                <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
-                  Administración
-                </p>
-                <nav className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('students');
-                      setIsSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'students'
-                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                      <span>Alumnas &amp; Ventas</span>
-                    </div>
-                    {students.length > 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
-                        {students.length}
-                      </span>
-                    )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab('users');
+                      setActiveTab('subscriptions');
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'users'
+                      activeTab === 'subscriptions'
                         ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
                         : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Shield className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                      <span>Roles &amp; Accesos</span>
+                      <Crown className={`w-4 h-4 ${activeTab === 'subscriptions' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Planes &amp; Suscripciones</span>
                     </div>
                   </button>
                 </nav>
@@ -981,19 +1144,21 @@ export function DashboardApp() {
               </button>
             )}
 
-            {/* Shortcut: Mis Cursos Comprados */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('my-courses')}
-              className={`hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                activeTab === 'my-courses'
-                  ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-pink-500/20'
-                  : 'bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200/80'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Mis Cursos{userEnrollments.length > 0 ? ` (${userEnrollments.length})` : ''}</span>
-            </button>
+            {/* Shortcut: Mis Cursos Comprados (Solo visible para modo Alumna) */}
+            {!hasStaffPrivileges && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('my-courses')}
+                className={`hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                  activeTab === 'my-courses'
+                    ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-pink-500/20'
+                    : 'bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200/80'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Mis Cursos{userEnrollments.length > 0 ? ` (${userEnrollments.length})` : ''}</span>
+              </button>
+            )}
 
             {/* User Chip */}
             <div className="flex items-center gap-2 pl-1 sm:pl-2">
@@ -2708,6 +2873,24 @@ export function DashboardApp() {
                           />
                         </div>
                       </div>
+
+                      {/* Settings & Access Button */}
+                      <div className="pt-2 border-t border-pink-100 flex items-center justify-between">
+                        <span className="text-[10px] text-[#A08A9E] font-medium">
+                          Nivel: <strong className="uppercase text-[#2A1828]">{stu.level || 'inicial'}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStudentToManage(stu);
+                            setIsStudentModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE0EB] border border-pink-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>Settings &amp; Accesos</span>
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -2724,12 +2907,13 @@ export function DashboardApp() {
                       <th className="pb-3">Ciudad / País</th>
                       <th className="pb-3">Progreso</th>
                       <th className="pb-3">Estado</th>
+                      <th className="pb-3 text-right">Settings / Accesos</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-pink-100 font-medium">
                     {students.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-xs text-[#A08A9E]">
+                        <td colSpan={7} className="py-10 text-center text-xs text-[#A08A9E]">
                           No hay alumnas matriculadas ni ventas registradas en la base de datos aún.
                         </td>
                       </tr>
@@ -2775,6 +2959,20 @@ export function DashboardApp() {
                           >
                             {stu.status}
                           </span>
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStudentToManage(stu);
+                              setIsStudentModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE0EB] border border-pink-200 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                            title="Gestionar cursos, accesos y nivel de esta alumna"
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                            <span>Settings Alumna</span>
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -3072,6 +3270,343 @@ export function DashboardApp() {
               </div>
             </div>
           )}
+
+          {/* =======================================================================
+           * TAB: PLATAFORMA DE COBRO (ROXANA RIVERA - YAPE, BCP, QR & WHATSAPP)
+           * ======================================================================= */}
+          {activeTab === 'billing' && hasStaffPrivileges && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#E31B6D] bg-[#FFF0F6] px-3 py-1 rounded-full border border-pink-200">
+                    Pasarela Directa en Soles PEN
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-serif italic font-bold text-[#2A1828] mt-2">
+                    Plataforma de Cobro de Roxana Rivera
+                  </h2>
+                  <p className="text-xs text-[#6A5A6D] mt-1 max-w-2xl">
+                    Configura tus números de Yape, Plin, cuentas bancarias en Soles y WhatsApp directo. Todas las alumnas verán estos datos en el checkout para pagar sin comisiones bancarias ni pasarelas intermedias.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSavePaymentSettings(paymentSettings)}
+                  className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 cursor-pointer self-start md:self-auto"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Guardar Ajustes de Cobro</span>
+                </button>
+              </div>
+
+              {/* Main Grid: Settings Form (Left) + Live Preview (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Form Column */}
+                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-pink-100 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-6">
+                  <h3 className="font-serif italic font-bold text-lg text-[#2A1828] flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-[#E31B6D]" />
+                    <span>Datos Bancarios y Billeteras Digitales</span>
+                  </h3>
+
+                  <div className="space-y-4 text-xs">
+                    {/* Titular */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#2A1828] mb-1">
+                        Titular de las Cuentas / Empresa
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentSettings.account_holder}
+                        onChange={(e) =>
+                          setPaymentSettings((prev) => ({ ...prev, account_holder: e.target.value }))
+                        }
+                        placeholder="Ej: Roxana Rivera / Girls & Law S.A.C."
+                        className="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 text-xs font-medium text-[#2A1828]"
+                      />
+                      <p className="text-[10px] text-[#A08A9E] mt-1">
+                        Nombre que las alumnas verán como titular al momento de transferir o yapear.
+                      </p>
+                    </div>
+
+                    {/* Yape / Plin */}
+                    <div className="p-4 rounded-2xl bg-[#FFF8FA] border border-pink-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#E31B6D] flex items-center gap-1.5">
+                          <QrCode className="w-4 h-4" /> Billetera Digital (Yape / Plin)
+                        </span>
+                        <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full">
+                          Pago Instantáneo
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                            Número de Celular Yape / Plin
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.yape_phone}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({ ...prev, yape_phone: e.target.value }))
+                            }
+                            placeholder="Ej: 987 654 321"
+                            className="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 text-xs font-bold text-[#2A1828]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                            URL Imagen Código QR
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.qr_image_url}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({ ...prev, qr_image_url: e.target.value }))
+                            }
+                            placeholder="https://... o imagen de tu QR"
+                            className="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 text-xs font-medium text-[#2A1828]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Transferencia Bancaria */}
+                    <div className="p-4 rounded-2xl bg-[#F7F9FF] border border-blue-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-blue-600" /> Transferencia Bancaria Directa
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">
+                          Soles PEN
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                          Entidad Bancaria
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentSettings.bank_name}
+                          onChange={(e) =>
+                            setPaymentSettings((prev) => ({ ...prev, bank_name: e.target.value }))
+                          }
+                          placeholder="Ej: BCP - Banco de Crédito del Perú"
+                          className="w-full px-3 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400/30 text-xs font-medium text-[#2A1828]"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                            Número de Cuenta Corriente / Ahorros
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.bank_account_number}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({
+                                ...prev,
+                                bank_account_number: e.target.value,
+                              }))
+                            }
+                            placeholder="Ej: 194-98765432-0-12"
+                            className="w-full px-3 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400/30 text-xs font-mono font-bold text-[#2A1828]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                            Código Interbancario (CCI)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.bank_cci}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({ ...prev, bank_cci: e.target.value }))
+                            }
+                            placeholder="Ej: 002-194-0098765432012-90"
+                            className="w-full px-3 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400/30 text-xs font-mono font-bold text-[#2A1828]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp de Confirmación */}
+                    <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-emerald-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                          <MessageCircle className="w-4 h-4 text-emerald-600" /> WhatsApp de Roxana para Validar Comprobantes
+                        </span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                          Notificación Inmediata
+                        </span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <div className="flex-1 w-full">
+                          <label className="block text-[10px] font-bold text-[#6A5A6D] mb-1">
+                            Número de WhatsApp (con código de país ej: 51 para Perú)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.whatsapp_number}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({
+                                ...prev,
+                                whatsapp_number: e.target.value,
+                              }))
+                            }
+                            placeholder="51987654321"
+                            className="w-full px-3 py-2 rounded-lg border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 text-xs font-bold text-[#2A1828]"
+                          />
+                        </div>
+                        <a
+                          href={`https://wa.me/${paymentSettings.whatsapp_number.replace(/\D/g, '')}?text=Hola%20Roxana%2C%20este%20es%20un%20test%20desde%20Girls%20%26%20Law`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 sm:mt-4 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer self-stretch sm:self-auto justify-center"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Probar WhatsApp
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Instrucciones adicionales */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#2A1828] mb-1">
+                        Instrucciones que Lee la Alumna en el Checkout
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={paymentSettings.instructions}
+                        onChange={(e) =>
+                          setPaymentSettings((prev) => ({ ...prev, instructions: e.target.value }))
+                        }
+                        placeholder="Instrucciones para el pago..."
+                        className="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 text-xs font-medium text-[#2A1828]"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleSavePaymentSettings(paymentSettings)}
+                        className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>Guardar y Sincronizar Cambios de Cobro</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Preview Column (Right) */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="bg-gradient-to-br from-pink-50 to-[#FFF0F6] rounded-3xl p-6 border border-pink-200/80 shadow-md">
+                    <div className="flex items-center justify-between pb-3 border-b border-pink-200/80 mb-4">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-[#E31B6D] tracking-wider">
+                          Vista Previa en Vivo
+                        </span>
+                        <h4 className="font-serif italic font-bold text-sm text-[#2A1828]">
+                          Así lo ven tus alumnas en el Checkout
+                        </h4>
+                      </div>
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Sincronizado" />
+                    </div>
+
+                    {/* Simulated Modal Card */}
+                    <div className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm space-y-4 text-xs">
+                      {/* Titular info */}
+                      <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                          {paymentSettings.account_holder.charAt(0) || 'R'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] text-[#A08A9E] font-medium">Docente &amp; Titular</p>
+                          <p className="font-bold text-[#2A1828] text-xs truncate">
+                            {paymentSettings.account_holder || 'Roxana Rivera'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Yape simulation */}
+                      <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800">
+                            Pagar con Yape o Plin
+                          </span>
+                          <span className="text-[10px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                            Inmediato
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-purple-200/60 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-[#6A5A6D] block">Número Yape / Plin</span>
+                            <span className="text-sm font-black text-[#2A1828] font-mono">
+                              {paymentSettings.yape_phone || '987 654 321'}
+                            </span>
+                          </div>
+                          <span className="px-2.5 py-1 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
+                            Copiar
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bank simulation */}
+                      <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 space-y-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 block">
+                          {paymentSettings.bank_name || 'BCP - Banco de Crédito del Perú'}
+                        </span>
+                        <div className="bg-white p-2.5 rounded-lg border border-blue-200/60 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-[#6A5A6D] block">Cta. Ahorros Soles</span>
+                            <span className="text-xs font-mono font-bold text-[#2A1828]">
+                              {paymentSettings.bank_account_number || '194-98765432-0-12'}
+                            </span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                            Copiar
+                          </span>
+                        </div>
+                        {paymentSettings.bank_cci && (
+                          <div className="bg-white p-2.5 rounded-lg border border-blue-200/60 flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] text-[#6A5A6D] block">Código Interbancario (CCI)</span>
+                              <span className="text-xs font-mono font-bold text-[#2A1828]">
+                                {paymentSettings.bank_cci}
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                              Copiar
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Direct WhatsApp Action Button */}
+                      <div className="pt-1">
+                        <div className="w-full py-2.5 px-3 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs">
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Enviar Comprobante a Roxana por WhatsApp</span>
+                        </div>
+                        <p className="text-[10px] text-center text-[#A08A9E] mt-2">
+                          La alumna envía su número de operación o captura y Roxana la valida directamente.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white border border-pink-100 text-xs text-[#6A5A6D] space-y-2">
+                    <p className="font-bold text-[#2A1828] flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      100% de los ingresos para Girls &amp; Law
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      Al operar mediante Yape directo y transferencias BCP, no pagas comisiones del 4% al 6% de pasarelas tradicionales. Una vez confirmado el pago, puedes matricular a la alumna con un solo clic desde la pestaña <strong>Alumnas &amp; Ventas</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -3095,6 +3630,21 @@ export function DashboardApp() {
         }}
         onSave={handleSaveUser}
         userToEdit={userToEdit}
+      />
+
+      {/* Student Individual Settings & Course Management Modal */}
+      <StudentSettingsModal
+        isOpen={isStudentModalOpen}
+        onClose={() => {
+          setIsStudentModalOpen(false);
+          setStudentToManage(null);
+        }}
+        student={studentToManage}
+        courses={courses}
+        userEnrollments={userEnrollments}
+        onEnrollInCourse={handleEnrollStudentInCourse}
+        onRevokeEnrollment={handleRevokeStudentEnrollment}
+        onUpdateProfile={handleUpdateStudentProfile}
       />
 
       {/* Course & Subscription Checkout Modal (Compra en Soles PEN con Yape/Plin/Tarjeta) */}
