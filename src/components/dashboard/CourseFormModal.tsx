@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { sileo } from 'sileo';
-import { uploadVideoToSupabaseStorage, type Course } from '@/lib/supabase';
+import {
+  uploadVideoToSupabaseStorage,
+  isYouTubeUrl,
+  getYouTubeEmbedUrl,
+  getYouTubeVideoId,
+  type Course,
+} from '@/lib/supabase';
 import {
   X,
   Image as ImageIcon,
@@ -134,7 +140,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
       }));
       sileo.success({
         title: '¡Video subido con éxito!',
-        description: `"${file.name}" se guardó en el bucket "course-videos" de Supabase.`,
+        description: `"${file.name}" se guardó con éxito para el curso.`,
       });
     } catch {
       sileo.error({
@@ -190,7 +196,33 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
       trailer_url: formData.trailer_url || '',
       featured: Boolean(formData.featured),
       created_at: formData.created_at || new Date().toISOString(),
-      modules: courseToEdit?.modules || [],
+      modules:
+        courseToEdit?.modules && courseToEdit.modules.length > 0
+          ? courseToEdit.modules
+          : [
+              {
+                id: `mod-${formData.id || Date.now()}-1`,
+                course_id: formData.id || `course-${Date.now()}`,
+                title: 'Módulo 1: Fundamentos y Estrategia Procesal',
+                description: 'Lecciones clínicas, teoría del caso y jurisprudencia aplicable.',
+                order_index: 1,
+                lessons: [
+                  {
+                    id: `les-${formData.id || Date.now()}-1`,
+                    module_id: `mod-${formData.id || Date.now()}-1`,
+                    course_id: formData.id || `course-${Date.now()}`,
+                    title: `Clase 01: Introducción a ${formData.title || 'la Masterclass'}`,
+                    duration: formData.duration || '15 min',
+                    video_url:
+                      formData.trailer_url ||
+                      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                    order_index: 1,
+                    is_free_preview: true,
+                    notes: 'Clase clínica introductoria con análisis procesal y descarga de matrices.',
+                  },
+                ],
+              },
+            ],
     };
 
     onSave(courseToSubmit);
@@ -345,10 +377,10 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
           </div>
 
           {/* Pricing (Venta de Cursos - Pago Único en Soles) & Duration */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-[#E31B6D]" /> Precio Venta (Soles PEN)
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
+                <DollarSign className="w-3.5 h-3.5 text-[#E31B6D]" /> Precio (S/.)
               </label>
               <input
                 type="number"
@@ -360,8 +392,8 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider">
-                Antes (Soles PEN)
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider">
+                Antes (S/.)
               </label>
               <input
                 type="number"
@@ -376,8 +408,8 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider">
-                Horas / Duración
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider">
+                Duración
               </label>
               <input
                 type="text"
@@ -388,7 +420,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
                 <Layers className="w-3.5 h-3.5 text-[#E31B6D]" /> Módulos
               </label>
               <input
@@ -403,18 +435,48 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
           </div>
 
-          {/* Subir Video Trailer / Contenido a Supabase Storage */}
-          <div className="space-y-2">
+          {/* Subir Video Trailer / YouTube No Listado */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-[#E31B6D]" /> Video Trailer / Contenido en Supabase Storage
+                <Video className="w-3.5 h-3.5 text-[#E31B6D]" /> Video Trailer / Clase (YouTube No Listado o Enlace)
               </label>
               <span className="text-[10px] font-bold text-[#A08A9E]">
-                Bucket: <strong className="text-[#E31B6D] font-mono">course-videos</strong>
+                YouTube Unlisted <strong className="text-emerald-600 font-mono">(Recomendado)</strong>
               </span>
             </div>
 
-            {/* Input nativo oculto para subida de archivos */}
+            {/* Input para Enlace de YouTube 'No listado' (Recomendado) */}
+            <div className="p-4 rounded-2xl bg-[#FFF9FB] border border-pink-200/90 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-[#2A1828] flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span>Enlace de YouTube en modo &apos;No listado&apos; (Recomendado)</span>
+                </label>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                  Gratis &amp; Sin Límite de MB
+                </span>
+              </div>
+              <p className="text-[11px] text-[#6A5A6D] leading-relaxed">
+                Pega el link de YouTube en modo &quot;No listado&quot; (ej: <code className="font-mono text-[#E31B6D]">https://youtu.be/...</code> o <code className="font-mono text-[#E31B6D]">https://www.youtube.com/watch?v=...</code>). Reproduce de inmediato en alta definición y sin límites de peso.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={formData.trailer_url || ''}
+                  onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value.trim() })}
+                  placeholder="https://youtu.be/..."
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/40"
+                />
+                {formData.trailer_url && isYouTubeUrl(formData.trailer_url) && (
+                  <span className="px-2.5 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-[10px] font-black shrink-0">
+                    ✓ ID Válido
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Input nativo oculto para subida de archivos opcional */}
             <input
               type="file"
               ref={videoFileInputRef}
@@ -423,15 +485,22 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
               className="hidden"
             />
 
-            {/* Si ya hay un video cargado o se subió uno nuevo */}
+            {/* Si ya hay un video cargado o se pegó un link de YouTube */}
             {formData.trailer_url ? (
               <div className="p-4 rounded-2xl bg-[#FFF5F9] border border-pink-200/90 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Video Cargado en Supabase</span>
-                    </span>
+                    {isYouTubeUrl(formData.trailer_url) ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        <span>YouTube &apos;No listado&apos; Configurado</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Video Guardado en la Plataforma</span>
+                      </span>
+                    )}
                     {uploadedFileName && (
                       <span className="text-[11px] font-mono font-bold text-[#2A1828] truncate max-w-xs">
                         {uploadedFileName}
@@ -447,7 +516,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                       className="px-3 py-1 rounded-full bg-white hover:bg-pink-100/70 border border-pink-200 text-[#E31B6D] text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                     >
                       <RefreshCw className="w-3 h-3" />
-                      <span>Cambiar Video</span>
+                      <span>Subir MP4</span>
                     </button>
                     <button
                       type="button"
@@ -463,16 +532,26 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                   </div>
                 </div>
 
-                {/* Reproductor de previsualización del video cargado */}
+                {/* Reproductor de previsualización: YouTube iframe o Video HTML5 */}
                 <div className="rounded-2xl overflow-hidden bg-black aspect-video relative shadow-inner">
-                  <video
-                    src={formData.trailer_url}
-                    controls
-                    playsInline
-                    className="w-full h-full object-cover"
-                  >
-                    Tu navegador no soporta reproducción de video.
-                  </video>
+                  {isYouTubeUrl(formData.trailer_url) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(formData.trailer_url)!}
+                      title="YouTube Preview"
+                      className="w-full h-full aspect-video border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={formData.trailer_url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      Tu navegador no soporta reproducción de video.
+                    </video>
+                  )}
                 </div>
 
                 {/* Alternar visualización de URL directa */}
@@ -482,14 +561,14 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                     onClick={() => setShowManualUrl(!showManualUrl)}
                     className="text-[10px] font-bold text-[#6A5A6D] hover:text-[#E31B6D] underline cursor-pointer"
                   >
-                    {showManualUrl ? 'Ocultar URL directa' : 'Ver / Editar URL directa de Supabase'}
+                    {showManualUrl ? 'Ocultar URL directa' : 'Ver / Editar URL completa'}
                   </button>
                   {showManualUrl && (
                     <input
                       type="text"
                       value={formData.trailer_url || ''}
                       onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
-                      placeholder="https://gfyqhlaytcrpbidgrijj.supabase.co/storage/v1/object/public/course-videos/..."
+                      placeholder="https://youtu.be/... o URL de video directa"
                       className="mt-1.5 w-full px-3 py-2 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-xs font-mono"
                     />
                   )}
@@ -510,10 +589,10 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                     <Loader2 className="w-8 h-8 text-[#E31B6D] animate-spin" />
                     <div>
                       <p className="text-xs font-bold text-[#E31B6D]">
-                        Subiendo archivo a Supabase Storage...
+                        Subiendo archivo de video...
                       </p>
                       <p className="text-[10px] text-[#6A5A6D]">
-                        {uploadedFileName || 'Guardando en bucket course-videos'}
+                        {uploadedFileName || 'Procesando archivo...'}
                       </p>
                     </div>
                   </>
@@ -527,7 +606,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                         Haz clic aquí para seleccionar y subir video desde tu equipo
                       </p>
                       <p className="text-[10px] text-[#6A5A6D] mt-0.5">
-                        Formatos soportados: MP4, MOV o WebM · Hasta 1 GB · Se aloja en Supabase Storage
+                        Formatos soportados: MP4, MOV o WebM · Hasta 1 GB · Reproducción rápida
                       </p>
                     </div>
                     <span className="mt-1 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-[11px] font-bold shadow-xs">
@@ -545,14 +624,14 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                   onClick={() => setShowManualUrl(!showManualUrl)}
                   className="text-[10px] font-bold text-[#6A5A6D] hover:text-[#E31B6D] underline cursor-pointer"
                 >
-                  {showManualUrl ? 'Ocultar campo de URL' : 'O pegar URL manual de Supabase / CDN'}
+                  {showManualUrl ? 'Ocultar campo de URL' : 'O pegar URL directa de video / CDN'}
                 </button>
                 {showManualUrl && (
                   <input
                     type="text"
                     value={formData.trailer_url || ''}
                     onChange={(e) => setFormData({ ...formData, trailer_url: e.target.value })}
-                    placeholder="https://gfyqhlaytcrpbidgrijj.supabase.co/storage/v1/object/public/course-videos/... o URL mp4"
+                    placeholder="https://... enlace directo a video .mp4"
                     className="mt-1.5 w-full px-3 py-2 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-xs font-mono"
                   />
                 )}

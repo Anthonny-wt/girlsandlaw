@@ -19,7 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export type UserRole = 'admin' | 'profesora' | 'alumna';
+export type UserRole = 'admin' | 'coordinadora' | 'sub_admin' | 'profesora' | 'alumna';
 export type UserLevel = 'inicial' | 'pro' | 'vip';
 
 export interface UserProfile {
@@ -387,63 +387,8 @@ export const SEED_COURSES: Course[] = [
   },
 ];
 
-export const SEED_STUDENTS: Student[] = [
-  {
-    id: 'stu-1',
-    name: 'Valentina Morales',
-    email: 'valentina.morales@lexcolombia.com',
-    course_title: 'Litigio de Alto Impacto',
-    amount_paid: 150,
-    enrolled_at: 'Hace 2 días',
-    progress: 85,
-    status: 'Activa',
-    city: 'Bogotá, Colombia',
-  },
-  {
-    id: 'stu-2',
-    name: 'Dra. Camila Soto',
-    email: 'camila.soto@juridicosantiago.cl',
-    course_title: 'Litigio de Alto Impacto',
-    amount_paid: 150,
-    enrolled_at: 'Hace 5 días',
-    progress: 100,
-    status: 'Completado',
-    city: 'Santiago, Chile',
-  },
-  {
-    id: 'stu-3',
-    name: 'Andrea Quintana',
-    email: 'andrea.quintana@estudiolegal.pe',
-    course_title: 'El Vault Procesal',
-    amount_paid: 50,
-    enrolled_at: 'Hace 1 semana',
-    progress: 60,
-    status: 'Activa',
-    city: 'Lima, Perú',
-  },
-  {
-    id: 'stu-4',
-    name: 'Lic. Mariana Rivas',
-    email: 'mariana.rivas@defensamexico.mx',
-    course_title: 'Interrogatorio y Objeciones',
-    amount_paid: 90,
-    enrolled_at: 'Hace 2 semanas',
-    progress: 40,
-    status: 'Activa',
-    city: 'CDMX, México',
-  },
-  {
-    id: 'stu-5',
-    name: 'Sofía Benítez',
-    email: 'sofia.benitez@justicia.ar',
-    course_title: 'Litigio de Alto Impacto',
-    amount_paid: 150,
-    enrolled_at: 'Hace 3 semanas',
-    progress: 100,
-    status: 'Completado',
-    city: 'Buenos Aires, Argentina',
-  },
-];
+// Sin datos falsos: Lista vacía por defecto ("si no hay datos que veamos sin datos")
+export const SEED_STUDENTS: Student[] = [];
 
 // Fetch user profile with role and level from Supabase
 export async function getUserProfile(userId: string, email?: string): Promise<UserProfile | null> {
@@ -668,6 +613,183 @@ export async function getAllProfiles(): Promise<UserProfile[]> {
 
 const LOCAL_STORAGE_COURSES_KEY = 'girls_and_law_courses_v2';
 
+// Helper to ensure each course has at least one functional module and playable lesson
+export function ensureCourseModules(c: Course): Course {
+  if (!c.modules || c.modules.length === 0) {
+    return {
+      ...c,
+      modules: [
+        {
+          id: `mod-${c.id}-1`,
+          course_id: c.id,
+          title: 'Módulo 1: Fundamentos y Estrategia Procesal',
+          description: 'Lecciones clínicas, jurisprudencia y materiales prácticos.',
+          order_index: 1,
+          lessons: [
+            {
+              id: `les-${c.id}-1`,
+              module_id: `mod-${c.id}-1`,
+              course_id: c.id,
+              title: `Clase 01: Introducción a ${c.title}`,
+              duration: c.duration || '15 min',
+              video_url: c.trailer_url || SAMPLE_VIDEOS.litigio1,
+              order_index: 1,
+              is_free_preview: true,
+              notes: 'Clase clínica introductoria con análisis procesal y descarga de matrices.',
+            },
+          ],
+        },
+      ],
+    };
+  }
+  return c;
+}
+
+// 3 Subscription Plans requested: Plan Base, Plan Full (con Meet), Plan Ultra (Todo)
+export interface SubscriptionPlan {
+  id: 'plan-base' | 'plan-full' | 'plan-ultra';
+  name: string;
+  tagline: string;
+  price: number;
+  compare_price?: number;
+  period: string;
+  badge: string;
+  level: UserLevel;
+  popular?: boolean;
+  description: string;
+  features: string[];
+}
+
+export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'plan-base',
+    name: 'Plan Base',
+    tagline: 'Acceso a los Cursos',
+    price: 49,
+    compare_price: 80,
+    period: 'PEN / mes',
+    badge: 'Membresía Base',
+    level: 'inicial',
+    popular: false,
+    description: 'Acceso ilimitado a todas las masterclasses grabadas y temarios interactivos en streaming HD.',
+    features: [
+      'Acceso ilimitado a todos los cursos y masterclasses',
+      'Reproductor HD multidispositivo (Laptop, Celular, Tablet)',
+      'Materiales procesales y lecturas complementarias',
+      'Certificado digital por cada curso culminado',
+      'Actualizaciones continuas de jurisprudencia',
+    ],
+  },
+  {
+    id: 'plan-full',
+    name: 'Plan Full',
+    tagline: 'Cursos + 1 Meet con Roxana Rivera',
+    price: 99,
+    compare_price: 150,
+    period: 'PEN / mes',
+    badge: 'Más Elegido · Recomendado',
+    level: 'pro',
+    popular: true,
+    description: 'Acceso a todos los cursos más una sesión clínica en vivo (Meet) exclusiva con Roxana Rivera.',
+    features: [
+      'Todo lo incluido en el Plan Base',
+      '1 Meet / Videollamada clínica en vivo con Roxana Rivera',
+      'Resolución de dudas procesales y casos reales en directo',
+      'Descarga de matrices y minutas procesales en Word',
+      'Acceso a la comunidad privada de abogadas de élite',
+      'Grabación de la sesión para repasar cuando quieras',
+    ],
+  },
+  {
+    id: 'plan-ultra',
+    name: 'Plan Ultra',
+    tagline: 'Acceso Total a Todo + Mentoría VIP',
+    price: 199,
+    compare_price: 320,
+    period: 'PEN / mes',
+    badge: 'Acceso Total VIP',
+    level: 'vip',
+    popular: false,
+    description: 'Acceso total e irrestricto a todos los cursos, clínicas en vivo, Vault procesal y Meet 1 a 1 con Roxana.',
+    features: [
+      'Acceso TOTAL a todos los cursos presentes y futuros',
+      'Meet exclusivo 1 a 1 personalizado con Roxana Rivera',
+      'Clínicas de Juicio Oral y Litigio con simulaciones en vivo',
+      'El Vault Procesal completo: 15+ modelos de demandas en Word',
+      'Asesoría en negociación de honorarios y marca jurídica',
+      'Canal VIP prioritario por WhatsApp con Roxana y equipo',
+    ],
+  },
+];
+
+export async function subscribeUserToPlan(params: {
+  userId: string;
+  planId: 'plan-base' | 'plan-full' | 'plan-ultra';
+  paymentMethod: string;
+  operationCode?: string;
+}): Promise<{ success: boolean; level: UserLevel }> {
+  const plan = SUBSCRIPTION_PLANS.find((p) => p.id === params.planId) || SUBSCRIPTION_PLANS[0];
+
+  // 1. Update user profile level in Supabase
+  try {
+    await supabase
+      .from('profiles')
+      .update({
+        level: plan.level,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.userId);
+  } catch (err) {
+    console.warn('Error updating profile level:', err);
+  }
+
+  // 2. Also register in local profile if offline or local state
+  if (typeof window !== 'undefined') {
+    const current = await getAllProfiles();
+    const updated = current.map((u) => (u.id === params.userId ? { ...u, level: plan.level } : u));
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updated));
+  }
+
+  // 3. Register enrollment / subscription payment in Supabase
+  try {
+    const allCourses = await getCourses();
+    const published = allCourses.filter((c) => c.status === 'published');
+    const coursesToEnroll = published.length > 0 ? published : allCourses;
+
+    for (const c of coursesToEnroll) {
+      await supabase.from('enrollments').upsert({
+        user_id: params.userId,
+        course_id: c.id,
+        amount_paid: plan.price,
+        currency: 'PEN',
+        payment_method: `${plan.name} (${params.paymentMethod})`,
+        status: 'active',
+      });
+    }
+  } catch (err) {
+    console.warn('Error registering plan enrollments:', err);
+  }
+
+  return { success: true, level: plan.level };
+}
+
+// Purga inmediata de datos de prueba o cursos seed residuales en LocalStorage
+if (typeof window !== 'undefined') {
+  try {
+    const localCourses = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
+    if (localCourses && (localCourses.includes('course-1') || localCourses.includes('Litigio de Alto Impacto') || localCourses.includes('course-2'))) {
+      localStorage.removeItem(LOCAL_STORAGE_COURSES_KEY);
+    }
+    const localEnr = localStorage.getItem(LOCAL_STORAGE_ENROLLMENTS_KEY);
+    if (localEnr && (localEnr.includes('admin-enr') || localEnr.includes('vip-enr'))) {
+      localStorage.removeItem(LOCAL_STORAGE_ENROLLMENTS_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// SINCRONIZACIÓN REAL: Consulta directa a Supabase. Si la BD está vacía, devuelve [] sin datos simulados
 export async function getCourses(): Promise<Course[]> {
   try {
     const { data, error } = await supabase
@@ -675,25 +797,16 @@ export async function getCourses(): Promise<Course[]> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return data as Course[];
+    // Si Supabase responde con éxito, devolvemos exactamente lo que hay en la BD (si está vacío, devuelve [])
+    if (!error && Array.isArray(data)) {
+      return data.map((c: Course) => ensureCourseModules(c));
     }
-  } catch {
-    // table not created yet
+  } catch (err) {
+    console.warn('Error connecting to Supabase courses:', err);
   }
 
-  if (typeof window !== 'undefined') {
-    const local = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch {
-        // fallback
-      }
-    }
-    localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(SEED_COURSES));
-  }
-  return SEED_COURSES;
+  // Si la BD no tiene datos o no devolvió cursos, devolvemos estrictamente [] ("si no hay datos que veamos sin datos")
+  return [];
 }
 
 export async function saveCourse(course: Course): Promise<Course> {
@@ -760,7 +873,7 @@ export async function deleteCourse(id: string): Promise<boolean> {
 // =====================================================================
 const LOCAL_STORAGE_ENROLLMENTS_KEY = 'girls_and_law_enrollments_v2';
 
-export async function getUserEnrollments(userId: string): Promise<Enrollment[]> {
+export async function getUserEnrollments(userId: string, _userLevel?: UserLevel): Promise<Enrollment[]> {
   try {
     const { data, error } = await supabase
       .from('enrollments')
@@ -768,56 +881,65 @@ export async function getUserEnrollments(userId: string): Promise<Enrollment[]> 
       .eq('user_id', userId)
       .eq('status', 'active');
 
-    if (!error && data && data.length > 0) {
+    // Si Supabase responde exitosamente (incluso si está vacío []), devolvemos la data real sin inventar registros
+    if (!error && Array.isArray(data)) {
       return data as Enrollment[];
     }
-  } catch {
-    // offline or table not created yet
+  } catch (err) {
+    console.warn('Error fetching user enrollments:', err);
   }
 
+  // Fallback offline a LocalStorage solo si Supabase no estuvo disponible
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem(LOCAL_STORAGE_ENROLLMENTS_KEY);
     if (local) {
       try {
         const all: Enrollment[] = JSON.parse(local);
-        const userOnly = all.filter((e) => e.user_id === userId && e.status === 'active');
-        if (userOnly.length > 0) return userOnly;
+        return all.filter((e) => e.user_id === userId && e.status === 'active');
       } catch {
         // fallback
       }
     }
   }
 
-  // Si el usuario es el administrador principal, asignamos acceso a los cursos insignia para pruebas
-  if (userId === 'e3bdf9ed-c289-4624-badf-7f26bae14ed8') {
-    const adminSeeds: Enrollment[] = [
-      {
-        id: 'enr-seed-1',
-        user_id: userId,
-        course_id: 'course-1',
-        amount_paid: 150,
-        currency: 'PEN',
-        payment_method: 'yape',
-        status: 'active',
-        progress_percent: 45,
-        enrolled_at: new Date('2026-02-10').toISOString(),
-      },
-      {
-        id: 'enr-seed-2',
-        user_id: userId,
-        course_id: 'course-2',
-        amount_paid: 50,
-        currency: 'PEN',
-        payment_method: 'yape',
-        status: 'active',
-        progress_percent: 25,
-        enrolled_at: new Date('2026-02-12').toISOString(),
-      },
-    ];
-    return adminSeeds;
+  return [];
+}
+
+// Matricular manualmente a una usuaria en un curso (Admin / Venta Directa Yape / Plin)
+export async function enrollUserInCourse(params: {
+  userId: string;
+  courseId: string;
+  amountPaid?: number;
+  currency?: 'PEN' | 'USD';
+  paymentMethod?: string;
+}): Promise<Enrollment> {
+  const enrollment: Enrollment = {
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `enr-${Date.now()}`,
+    user_id: params.userId,
+    course_id: params.courseId,
+    amount_paid: params.amountPaid || 0,
+    currency: params.currency || 'PEN',
+    payment_method: params.paymentMethod || 'Manual Admin',
+    status: 'active',
+    progress_percent: 0,
+    enrolled_at: new Date().toISOString(),
+  };
+
+  try {
+    await supabase.from('enrollments').upsert({
+      user_id: params.userId,
+      course_id: params.courseId,
+      amount_paid: params.amountPaid || 0,
+      currency: params.currency || 'PEN',
+      payment_method: params.paymentMethod || 'Manual Admin',
+      status: 'active',
+    });
+  } catch {
+    // offline fallback
   }
 
-  return [];
+  saveEnrollmentLocally(enrollment);
+  return enrollment;
 }
 
 export async function purchaseCourse(params: {
@@ -893,13 +1015,145 @@ function saveEnrollmentLocally(enrollment: Enrollment) {
   }
 }
 
+// Obtener todas las matrículas registradas en la base de datos
+export async function getAllEnrollments(): Promise<Enrollment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*')
+      .order('enrolled_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return data as Enrollment[];
+    }
+  } catch (err) {
+    console.warn('Error fetching enrollments:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem(LOCAL_STORAGE_ENROLLMENTS_KEY);
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch {
+        // fallback
+      }
+    }
+  }
+
+  return [];
+}
+
+// SINCRONIZACIÓN REAL DE ALUMNAS:
+// Consulta real a Supabase (profiles y enrollments). Si la BD no tiene registros, devuelve [] (sin datos falsos).
+export async function getRealStudents(): Promise<Student[]> {
+  try {
+    const enrollments = await getAllEnrollments();
+    const profiles = await getAllProfiles();
+    const courses = await getCourses();
+
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+    const courseMap = new Map(courses.map((c) => [c.id, c]));
+
+    // Si existen matrículas reales registradas:
+    if (enrollments.length > 0) {
+      return enrollments.map((e) => {
+        const prof = profileMap.get(e.user_id);
+        const crs = courseMap.get(e.course_id);
+        const dateStr = e.enrolled_at
+          ? new Date(e.enrolled_at).toLocaleDateString('es-PE', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : 'Reciente';
+
+        return {
+          id: e.id,
+          name: prof?.full_name || prof?.email?.split('@')[0] || 'Alumna Registrada',
+          email: prof?.email || 'alumna@continental.edu.pe',
+          course_title: crs?.title || 'Masterclass',
+          amount_paid: Number(e.amount_paid) || 0,
+          enrolled_at: dateStr,
+          progress: e.progress_percent || 0,
+          status: e.status === 'completed' ? 'Completado' : 'Activa',
+          city: prof?.phone || 'Perú',
+        };
+      });
+    }
+
+    // Si no hay compras aún en enrollments, pero existen usuarias registradas con rol 'alumna':
+    const alumnas = profiles.filter((p) => p.role === 'alumna');
+    if (alumnas.length > 0) {
+      return alumnas.map((p) => ({
+        id: p.id,
+        name: p.full_name || p.email.split('@')[0],
+        email: p.email,
+        course_title: 'Sin curso asignado aún',
+        amount_paid: 0,
+        enrolled_at: p.created_at
+          ? new Date(p.created_at).toLocaleDateString('es-PE', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+          : 'Registrada',
+        progress: 0,
+        status: 'Activa',
+        city: p.phone || 'Perú',
+      }));
+    }
+  } catch (err) {
+    console.warn('Error fetching real students:', err);
+  }
+
+  // Si no hay datos en la BD, devolver lista vacía ("si no hay datos que veamos sin datos")
+  return [];
+}
+
 export function isUserEnrolledInCourse(
   enrollments: Enrollment[],
   courseId: string,
-  userRole?: UserRole
+  userRole?: UserRole,
+  userLevel?: UserLevel
 ): boolean {
-  if (userRole === 'admin' || userRole === 'profesora') return true;
+  if (
+    userRole === 'admin' ||
+    userRole === 'coordinadora' ||
+    userRole === 'sub_admin' ||
+    userRole === 'profesora' ||
+    userLevel === 'vip'
+  ) {
+    return true;
+  }
   return enrollments.some((e) => e.course_id === courseId && e.status === 'active');
+}
+
+// Helper to extract YouTube Video ID from any format (youtu.be, watch?v=, embed/, shorts/, etc.)
+export function getYouTubeVideoId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  // Bare 11-char ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Common YouTube URL structures
+  const match = trimmed.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+export function isYouTubeUrl(url: string): boolean {
+  return !!getYouTubeVideoId(url);
+}
+
+export function getYouTubeEmbedUrl(url: string): string | null {
+  const id = getYouTubeVideoId(url);
+  if (!id) return null;
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&enablejsapi=1`;
 }
 
 // Generate Supabase Storage Public Video URL
@@ -974,12 +1228,17 @@ create table if not exists public.profiles (
   email text not null,
   full_name text,
   avatar_url text,
-  role text not null default 'alumna' check (role in ('admin', 'profesora', 'alumna')),
+  role text not null default 'alumna' check (role in ('admin', 'coordinadora', 'sub_admin', 'profesora', 'alumna')),
   level text not null default 'inicial' check (level in ('inicial', 'pro', 'vip')),
   phone text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Asegurar actualización de constraint de rol en bases de datos existentes:
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('admin', 'coordinadora', 'sub_admin', 'profesora', 'alumna'));
 
 alter table public.profiles enable row level security;
 
@@ -995,7 +1254,7 @@ drop policy if exists "Admins gestionan perfiles" on public.profiles;
 create policy "Admins gestionan perfiles" on public.profiles
   for all using (
     exists (
-      select 1 from public.profiles where id = auth.uid() and role = 'admin'
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin')
     )
   );
 
@@ -1069,7 +1328,7 @@ drop policy if exists "Gestión de cursos para administradores" on public.course
 create policy "Gestión de cursos para administradores" on public.courses
   for all using (
     exists (
-      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin', 'profesora')
     )
   );
 
@@ -1093,7 +1352,7 @@ drop policy if exists "Admins gestionan módulos" on public.modules;
 create policy "Admins gestionan módulos" on public.modules
   for all using (
     exists (
-      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin', 'profesora')
     )
   );
 
@@ -1132,7 +1391,10 @@ create policy "Lecciones visibles solo con compra confirmada o preview" on publi
     or exists (
       select 1 from public.profiles
       where profiles.id = auth.uid()
-        and profiles.role in ('admin', 'profesora')
+        and (
+          profiles.role in ('admin', 'coordinadora', 'sub_admin', 'profesora')
+          or profiles.level = 'vip'
+        )
     )
   );
 
@@ -1140,7 +1402,7 @@ drop policy if exists "Admins gestionan lecciones" on public.lessons;
 create policy "Admins gestionan lecciones" on public.lessons
   for all using (
     exists (
-      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'profesora')
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin', 'profesora')
     )
   );
 
@@ -1168,7 +1430,7 @@ drop policy if exists "Admins ven y gestionan todas las matrículas" on public.e
 create policy "Admins ven y gestionan todas las matrículas" on public.enrollments
   for all using (
     exists (
-      select 1 from public.profiles where id = auth.uid() and role = 'admin'
+      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin')
     )
   );
 

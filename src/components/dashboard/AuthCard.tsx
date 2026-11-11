@@ -41,7 +41,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
           onSuccess(data.user);
         } else {
           const msg =
-            '¡Registro recibido! Si Supabase tiene confirmación de correo activa, revisa tu bandeja para verificar tu cuenta antes de iniciar sesión.';
+            '¡Registro recibido! Revisa tu bandeja de entrada o spam para verificar tu cuenta antes de iniciar sesión.';
           setInfoMessage(msg);
           sileo.info({
             title: 'Registro recibido',
@@ -67,10 +67,10 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al autenticar en Supabase';
+      const msg = err instanceof Error ? err.message : 'Error al autenticar';
       const formatted =
         msg === 'Invalid login credentials'
-          ? 'Credenciales inválidas. Verifica tu correo y contraseña registrados en Supabase.'
+          ? 'Credenciales incorrectas. Verifica tu correo y contraseña registrados.'
           : msg;
       setErrorMessage(formatted);
       sileo.error({
@@ -109,7 +109,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al conectar con Google';
       const formatted = msg.includes('provider is not enabled')
-        ? 'El proveedor Google no está activado aún en tu proyecto de Supabase. Sigue el instructivo de configuración paso a paso.'
+        ? 'El acceso con Google no está habilitado actualmente. Por favor ingresa con tu correo y contraseña.'
         : msg;
       setErrorMessage(formatted);
       sileo.error({
@@ -123,7 +123,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
   return (
     <div className="w-full max-w-md mx-auto">
       <div
-        className="rounded-[36px] bg-white p-7 sm:p-9 cushion-card border border-pink-100 shadow-2xl relative overflow-hidden"
+        className="rounded-3xl sm:rounded-[36px] bg-white p-5 sm:p-9 cushion-card border border-pink-100 shadow-2xl relative overflow-hidden"
         style={{
           boxShadow:
             'inset 0 -10px 0 rgba(255, 179, 209, 0.35), inset 0 6px 0 rgba(255, 255, 255, 0.95), 0 25px 50px -12px rgba(45, 30, 66, 0.15)',
@@ -274,7 +274,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
               className="w-full mt-2 py-3 px-6 rounded-full text-xs font-black text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] transition-all shadow-md active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               {loading ? (
-                <span className="animate-pulse">Conectando con Supabase...</span>
+                <span className="animate-pulse">Iniciando sesión segura...</span>
               ) : (
                 <>
                   <span>{isRegister ? 'Crear Cuenta' : 'Entrar al Campus'}</span>
@@ -285,10 +285,20 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
           </form>
         </div>
 
-        {/* Supabase status footer */}
-        <div className="mt-6 pt-4 border-t border-pink-100 flex items-center justify-center gap-2 text-[10px] font-bold text-[#A08A9E] font-mono">
+        {/* Security status footer */}
+        <div className="mt-6 pt-4 border-t border-pink-100 flex items-center justify-center gap-2 text-[10px] font-bold text-[#A08A9E]">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Autenticación directa en Supabase</span>
+          <span>Acceso Seguro y Cifrado · Girls &amp; Law</span>
+        </div>
+
+        {/* Back to landing page link */}
+        <div className="mt-3 text-center">
+          <a
+            href="/"
+            className="text-[11px] font-bold text-[#A08A9E] hover:text-[#E31B6D] transition-colors"
+          >
+            ← Volver a la página principal
+          </a>
         </div>
       </div>
     </div>

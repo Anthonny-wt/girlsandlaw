@@ -69,19 +69,19 @@ export function UserFormModal({ isOpen, onClose, onSave, userToEdit }: UserFormM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-[0_20px_60px_rgba(227,27,109,0.18)] border border-pink-100 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl p-4 sm:p-8 shadow-[0_20px_60px_rgba(227,27,109,0.18)] border border-pink-100 max-h-[92vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-pink-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF0F6] border border-pink-200 flex items-center justify-center text-[#E31B6D]">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-pink-100">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#FFF0F6] border border-pink-200 flex items-center justify-center text-[#E31B6D] shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
+              <h2 className="text-lg sm:text-xl font-serif italic font-bold text-[#2A1828]">
                 {userToEdit ? 'Editar Cuenta de Usuario' : 'Crear Nueva Cuenta'}
               </h2>
-              <p className="text-xs font-bold text-[#6A5A6D]">
+              <p className="text-[11px] sm:text-xs font-bold text-[#6A5A6D]">
                 {userToEdit
                   ? 'Modifica los permisos, rol y nivel de acceso'
                   : 'Registra una alumna, profesora o administradora'}
@@ -164,7 +164,8 @@ export function UserFormModal({ isOpen, onClose, onSave, userToEdit }: UserFormM
               >
                 <option value="alumna">Alumna (Estudiante)</option>
                 <option value="profesora">Profesora (Docente)</option>
-                <option value="admin">Administradora</option>
+                <option value="coordinadora">Coordinadora Académica (Sub Admin · Privilegios completos)</option>
+                <option value="admin">Administradora General (Super Admin)</option>
               </select>
             </div>
 

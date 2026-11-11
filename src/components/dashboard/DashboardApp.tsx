@@ -12,9 +12,12 @@ import {
   updateUserProfile,
   deleteUserProfile,
   getSupabaseVideoUrl,
+  isYouTubeUrl,
+  getYouTubeEmbedUrl,
   uploadVideoToSupabaseStorage,
-  SUPABASE_SQL_MIGRATION,
-  SEED_STUDENTS,
+  getRealStudents,
+  SUBSCRIPTION_PLANS,
+  type SubscriptionPlan,
   type Course,
   type CourseModule,
   type Lesson,
@@ -24,6 +27,7 @@ import {
   type UserLevel,
   type Enrollment,
   getUserEnrollments,
+  enrollUserInCourse,
   isUserEnrolledInCourse,
 } from '@/lib/supabase';
 import { AuthCard } from './AuthCard';
@@ -35,7 +39,6 @@ import {
   BookOpen,
   Users,
   TrendingUp,
-  Database,
   Plus,
   Search,
   ExternalLink,
@@ -43,17 +46,17 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
-  Copy,
   Clock,
   Sparkles,
   Layers,
-  RefreshCw,
   Award,
+  Crown,
   Shield,
   GraduationCap,
   PlayCircle,
   PauseCircle,
   ArrowUpRight,
+  ArrowRight,
   Bell,
   Grid as GridIcon,
   List as ListIcon,
@@ -79,6 +82,7 @@ import {
   QrCode,
   Upload,
   Loader2,
+  UserPlus,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -87,14 +91,16 @@ export function DashboardApp() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [previewRole, setPreviewRole] = useState<UserRole | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [students, setStudents] = useState<Student[]>(SEED_STUDENTS);
+  // Sincronización real con BD: Si no hay alumnas en la BD, la lista inicia vacía ("si no hay datos que veamos sin datos")
+  const [students, setStudents] = useState<Student[]>([]);
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [userEnrollments, setUserEnrollments] = useState<Enrollment[]>([]);
   const [courseToBuy, setCourseToBuy] = useState<Course | null>(null);
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<SubscriptionPlan | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'courses' | 'classroom' | 'my-courses' | 'students' | 'users' | 'metrics' | 'supabase-sync'
+    'dashboard' | 'courses' | 'classroom' | 'my-courses' | 'subscriptions' | 'students' | 'users'
   >('dashboard');
 
   // Sidebar toggle for mobile
@@ -129,10 +135,6 @@ export function DashboardApp() {
   const lessonFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingLessonVideo, setIsUploadingLessonVideo] = useState(false);
 
-  const [copiedSql, setCopiedSql] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'connected' | 'error'>('idle');
-  const [syncMessage, setSyncMessage] = useState<string>('');
-
   const showToast = (
     title: string,
     description?: string,
@@ -165,7 +167,7 @@ export function DashboardApp() {
           setSupabaseUser(user);
           const p = await getUserProfile(user.id, user.email);
           setProfile(p);
-          const enrollments = await getUserEnrollments(user.id);
+          const enrollments = await getUserEnrollments(user.id, p?.level);
           setUserEnrollments(enrollments);
           if (p?.role === 'alumna') {
             setActiveTab('classroom');
@@ -182,10 +184,30 @@ export function DashboardApp() {
         if (loadedCourses[0].modules?.[0]?.lessons?.[0]) {
           setActiveLesson(loadedCourses[0].modules[0].lessons[0]);
         }
+      } else {
+        setSelectedCourseForClassroom(null);
+        setActiveLesson(null);
       }
+
+      // Sincronización real con Supabase:
+      const realStudents = await getRealStudents();
+      setStudents(realStudents);
 
       const profiles = await getAllProfiles();
       setUserList(profiles);
+
+      // Si viene con parámetro ?plan=plan-xxx desde la landing page, abrir checkout
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const planParam = params.get('plan');
+        if (planParam) {
+          const matchPlan = SUBSCRIPTION_PLANS.find((p) => p.id === planParam);
+          if (matchPlan) {
+            setSelectedPlanForCheckout(matchPlan);
+            setIsCheckoutOpen(true);
+          }
+        }
+      }
 
       setLoading(false);
     }
@@ -197,7 +219,7 @@ export function DashboardApp() {
         setSupabaseUser(session.user);
         const p = await getUserProfile(session.user.id, session.user.email);
         setProfile(p);
-        const enrollments = await getUserEnrollments(session.user.id);
+        const enrollments = await getUserEnrollments(session.user.id, p?.level);
         setUserEnrollments(enrollments);
         if (p?.role === 'alumna') {
           setActiveTab('classroom');
@@ -218,7 +240,7 @@ export function DashboardApp() {
     setSupabaseUser(user);
     const p = await getUserProfile(user.id, user.email);
     setProfile(p);
-    const enrollments = await getUserEnrollments(user.id);
+    const enrollments = await getUserEnrollments(user.id, p?.level);
     setUserEnrollments(enrollments);
     if (p?.role === 'alumna') {
       setActiveTab('classroom');
@@ -238,7 +260,7 @@ export function DashboardApp() {
   };
 
   const isEnrolled = (courseId: string) => {
-    return isUserEnrolledInCourse(userEnrollments, courseId, currentRole);
+    return isUserEnrolledInCourse(userEnrollments, courseId, currentRole, currentLevel);
   };
 
   const handleOpenCheckout = (course: Course) => {
@@ -246,23 +268,41 @@ export function DashboardApp() {
     setIsCheckoutOpen(true);
   };
 
-  const handleCheckoutSuccess = (newEnrollment: Enrollment) => {
-    setUserEnrollments((prev) => [newEnrollment, ...prev]);
-    setCourses((prev) =>
-      prev.map((c) =>
-        c.id === newEnrollment.course_id
-          ? { ...c, students_count: (c.students_count || 0) + 1 }
-          : c
-      )
-    );
-    const bought = courses.find((c) => c.id === newEnrollment.course_id);
-    if (bought) {
-      setSelectedCourseForClassroom(bought);
-      if (bought.modules?.[0]?.lessons?.[0]) {
-        setActiveLesson(bought.modules[0].lessons[0]);
+  const handleCheckoutSuccess = async (
+    result: Enrollment | { plan: SubscriptionPlan; level: UserLevel }
+  ) => {
+    if ('course_id' in result) {
+      setUserEnrollments((prev) => [result, ...prev]);
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === result.course_id
+            ? { ...c, students_count: (c.students_count || 0) + 1 }
+            : c
+        )
+      );
+      const bought = courses.find((c) => c.id === result.course_id);
+      if (bought) {
+        setSelectedCourseForClassroom(bought);
+        if (bought.modules?.[0]?.lessons?.[0]) {
+          setActiveLesson(bought.modules[0].lessons[0]);
+        }
+        setActiveTab('classroom');
+      }
+    } else {
+      // Suscripción a Plan Base, Full o Ultra
+      if (profile) {
+        setProfile({ ...profile, level: result.level });
+      }
+      if (supabaseUser) {
+        const enr = await getUserEnrollments(supabaseUser.id, result.level);
+        setUserEnrollments(enr);
       }
       setActiveTab('classroom');
     }
+
+    // Actualizar alumnas y ventas en tiempo real
+    const realStudents = await getRealStudents();
+    setStudents(realStudents);
   };
 
   // Course actions
@@ -324,12 +364,12 @@ export function DashboardApp() {
 
       sileo.success({
         title: '¡Video de lección subido!',
-        description: `"${file.name}" se guardó en Supabase Storage para "${activeLesson.title}".`,
+        description: `"${file.name}" se guardó con éxito para "${activeLesson.title}".`,
       });
     } catch {
       sileo.error({
         title: 'Error al subir video',
-        description: 'No se pudo subir el archivo de lección a Supabase Storage.',
+        description: 'No se pudo procesar la subida del archivo de video.',
       });
     } finally {
       setIsUploadingLessonVideo(false);
@@ -337,6 +377,43 @@ export function DashboardApp() {
         lessonFileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleUpdateLessonVideoUrl = async (newUrl: string) => {
+    if (!activeLesson || !selectedCourseForClassroom) return;
+
+    const trimmedUrl = newUrl.trim();
+    if (!trimmedUrl) return;
+
+    const isYt = isYouTubeUrl(trimmedUrl);
+    const updatedLesson: Lesson = {
+      ...activeLesson,
+      video_url: trimmedUrl,
+      storage_path: isYt ? `youtube/${getYouTubeVideoId(trimmedUrl)}` : activeLesson.storage_path,
+    };
+    setActiveLesson(updatedLesson);
+
+    const updatedModules = (selectedCourseForClassroom.modules || []).map((m) => ({
+      ...m,
+      lessons: m.lessons.map((les) => (les.id === activeLesson.id ? updatedLesson : les)),
+    }));
+
+    const updatedCourse: Course = {
+      ...selectedCourseForClassroom,
+      modules: updatedModules,
+    };
+
+    setSelectedCourseForClassroom(updatedCourse);
+    setCourses((prev) =>
+      prev.map((c) => (c.id === updatedCourse.id ? updatedCourse : c))
+    );
+
+    await saveCourse(updatedCourse);
+
+    sileo.success({
+      title: isYt ? '¡YouTube No Listado Vinculado!' : '¡Enlace de Video Guardado!',
+      description: `La lección "${activeLesson.title}" ahora reproduce el video en alta definición.`,
+    });
   };
 
   const handleDeleteCourse = async (id: string, title: string) => {
@@ -377,7 +454,28 @@ export function DashboardApp() {
     setUserList((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, level: newLevel } : u))
     );
+    if (supabaseUser?.id === userId) {
+      setProfile((prev) => (prev ? { ...prev, level: newLevel } : prev));
+      const reloaded = await getUserEnrollments(userId, newLevel);
+      setUserEnrollments(reloaded);
+    }
     showToast(`Nivel de acceso actualizado a "${newLevel.toUpperCase()}"`);
+  };
+
+  const handleEnrollUser = async (userId: string, courseId: string) => {
+    const course = courses.find((c) => c.id === courseId);
+    if (!course) return;
+    const newEnr = await enrollUserInCourse({
+      userId,
+      courseId,
+      amountPaid: course.price,
+      currency: 'PEN',
+      paymentMethod: 'Asignación Admin',
+    });
+    if (supabaseUser?.id === userId) {
+      setUserEnrollments((prev) => [newEnr, ...prev.filter((e) => e.course_id !== courseId)]);
+    }
+    showToast(`Matriculada con éxito en "${course.title}"`);
   };
 
   // User CRUD Handlers
@@ -440,33 +538,6 @@ export function DashboardApp() {
     }
   };
 
-  const testSupabaseConnection = async () => {
-    setSyncStatus('checking');
-    try {
-      const start = Date.now();
-      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-      const duration = Date.now() - start;
-
-      if (!error) {
-        setSyncStatus('connected');
-        setSyncMessage(`Supabase 100% activo (${duration}ms). Tablas y storage bucket sincronizados.`);
-      } else {
-        setSyncStatus('connected');
-        setSyncMessage(`Conexión con Supabase verificada (${duration}ms). Ejecuta el script SQL en el Editor SQL de Supabase para crear las tablas.`);
-      }
-    } catch {
-      setSyncStatus('error');
-      setSyncMessage('Error al verificar conexión con Supabase');
-    }
-  };
-
-  const copySqlToClipboard = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_MIGRATION);
-    setCopiedSql(true);
-    showToast('Script SQL copiado al portapapeles');
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
   // Classroom lesson toggle
   const toggleLessonCompleted = (lessonId: string) => {
     setCompletedLessonIds((prev) => {
@@ -491,7 +562,9 @@ export function DashboardApp() {
 
   const currentRole: UserRole = previewRole || profile?.role || 'alumna';
   const currentLevel: UserLevel = profile?.level || 'inicial';
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'coordinadora' || profile?.role === 'sub_admin';
+  const hasAdminPrivileges = currentRole === 'admin' || currentRole === 'coordinadora' || currentRole === 'sub_admin';
+  const hasStaffPrivileges = hasAdminPrivileges || currentRole === 'profesora';
 
   // Filtered courses
   const filteredCourses = courses.filter((c) => {
@@ -519,9 +592,12 @@ export function DashboardApp() {
   const totalCourses = courses.length;
   const publishedCourses = courses.filter((c) => c.status === 'published').length;
   const draftCourses = courses.filter((c) => c.status === 'draft').length;
-  const totalStudents = courses.reduce((acc, c) => acc + (c.students_count || 0), 0);
-  const totalRevenue = courses.reduce((acc, c) => acc + c.price * (c.students_count || 0), 0);
-  const avgTicket = totalStudents > 0 ? Math.round(totalRevenue / totalStudents) : 118;
+  // Sincronización real con BD:
+  // Si no hay ventas ni alumnas en la base de datos, los valores son 0 ("si no hay datos que veamos sin datos")
+  const totalStudents = students.length;
+  const totalRevenue = students.reduce((acc, s) => acc + (s.amount_paid || 0), 0);
+  const avgTicket = totalStudents > 0 ? Math.round(totalRevenue / totalStudents) : 0;
+  const avgProgress = totalStudents > 0 ? Math.round(students.reduce((acc, s) => acc + (s.progress || 0), 0) / totalStudents) : 0;
 
   if (loading) {
     return (
@@ -599,53 +675,47 @@ export function DashboardApp() {
                 Campus &amp; Cursos
               </p>
               <nav className="space-y-1.5">
-                {(currentRole === 'admin' || currentRole === 'profesora') && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('dashboard');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'dashboard'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Dashboard General</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('courses');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'courses'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <BookOpen className={`w-4 h-4 ${activeTab === 'courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Gestión de Cursos</span>
-                      </div>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          activeTab === 'courses'
-                            ? 'bg-[#E31B6D] text-white'
-                            : 'bg-pink-100/70 text-[#E31B6D]'
-                        }`}
-                      >
+                {hasStaffPrivileges ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('dashboard');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'dashboard'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Dashboard General</span>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('courses');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'courses'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <BookOpen className={`w-4 h-4 ${activeTab === 'courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Catálogo de Cursos</span>
+                    </div>
+                    {totalCourses > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
                         {totalCourses}
                       </span>
-                    </button>
-                  </>
+                    )}
+                  </button>
                 )}
 
                 <button
@@ -664,9 +734,6 @@ export function DashboardApp() {
                     <GraduationCap className={`w-4 h-4 ${activeTab === 'classroom' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
                     <span>Mi Aula Virtual</span>
                   </div>
-                  <span className="text-[9px] px-2.5 py-0.5 rounded-full bg-pink-100 text-[#E31B6D] font-black uppercase">
-                    Videos 4K
-                  </span>
                 </button>
 
                 <button
@@ -685,103 +752,90 @@ export function DashboardApp() {
                     <ShoppingBag className={`w-4 h-4 ${activeTab === 'my-courses' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
                     <span>Mis Cursos Comprados</span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E31B6D] text-white">
-                    {userEnrollments.length}
-                  </span>
+                  {userEnrollments.length > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#E31B6D] text-white">
+                      {userEnrollments.length}
+                    </span>
+                  )}
                 </button>
 
-                {currentRole === 'admin' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('students');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'students'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Alumnas &amp; Ventas</span>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
-                        {students.length}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('metrics');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'metrics'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <TrendingUp className={`w-4 h-4 ${activeTab === 'metrics' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Ventas de Cursos</span>
-                      </div>
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('subscriptions');
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'subscriptions'
+                      ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                      : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Crown className={`w-4 h-4 ${activeTab === 'subscriptions' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                    <span>Planes &amp; Suscripciones</span>
+                  </div>
+                </button>
               </nav>
             </div>
 
-            {/* Group 2: Configuración & Base de Datos */}
+            {/* Group 2: Administración & Equipo (Solo Administradoras) */}
+            {hasAdminPrivileges && (
+              <div>
+                <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
+                  Administración
+                </p>
+                <nav className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('students');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'students'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Alumnas &amp; Ventas</span>
+                    </div>
+                    {students.length > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100/70 text-[#E31B6D]">
+                        {students.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('users');
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'users'
+                        ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
+                        : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Shield className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
+                      <span>Roles &amp; Accesos</span>
+                    </div>
+                  </button>
+                </nav>
+              </div>
+            )}
+
+            {/* Group 3: Navegación Externa */}
             <div>
               <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
-                Configuración &amp; BD
+                Enlaces
               </p>
               <nav className="space-y-1.5">
-                {currentRole === 'admin' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('users');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'users'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Shield className={`w-4 h-4 ${activeTab === 'users' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Roles &amp; Niveles</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('supabase-sync');
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'supabase-sync'
-                          ? 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200/80 shadow-xs'
-                          : 'text-[#6A5A6D] hover:text-[#E31B6D] hover:bg-pink-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Database className={`w-4 h-4 ${activeTab === 'supabase-sync' ? 'text-[#E31B6D]' : 'text-slate-400'}`} />
-                        <span>Supabase &amp; Videos</span>
-                      </div>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    </button>
-                  </>
-                )}
-
                 <a
                   href="/"
                   target="_blank"
@@ -826,13 +880,23 @@ export function DashboardApp() {
         </div>
       </aside>
 
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div
+          role="presentation"
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-35 md:hidden animate-fade-in"
+          aria-hidden="true"
+        />
+      )}
+
       {/* =======================================================================
        * MAIN CONTENT AREA
        * ======================================================================= */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Bar */}
-        <header className="h-20 bg-white/90 backdrop-blur-md border-b border-pink-100/90 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-3">
+        <header className="h-16 sm:h-20 bg-white/90 backdrop-blur-md border-b border-pink-100/90 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setIsSidebarOpen(true)}
@@ -842,20 +906,20 @@ export function DashboardApp() {
             </button>
 
             {/* Search Input in pill style */}
-            <div className="relative w-48 sm:w-72 md:w-80">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-pink-400" />
+            <div className="relative w-32 xs:w-44 sm:w-72 md:w-80">
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-pink-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar cursos, lecciones, alumnas..."
-                className="w-full pl-10 pr-4 py-2 rounded-full bg-[#FFF5F9] border border-pink-200/80 text-xs text-[#2A1828] placeholder:text-[#A08A9E] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 transition-all shadow-xs"
+                placeholder="Buscar..."
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 rounded-full bg-[#FFF5F9] border border-pink-200/80 text-[11px] sm:text-xs text-[#2A1828] placeholder:text-[#A08A9E] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 transition-all shadow-xs"
               />
             </div>
           </div>
 
           {/* Right User Bar */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Admin preview toggle */}
             {isAdmin && (
               <div className="hidden lg:flex items-center p-1 rounded-full bg-[#FFF0F6] border border-pink-200/80 text-[11px] font-bold">
@@ -869,6 +933,20 @@ export function DashboardApp() {
                   }`}
                 >
                   Vista Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewRole('coordinadora');
+                    setActiveTab('dashboard');
+                  }}
+                  className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                    previewRole === 'coordinadora'
+                      ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-xs'
+                      : 'text-[#6A5A6D] hover:text-[#E31B6D]'
+                  }`}
+                >
+                  Vista Sub Admin
                 </button>
                 <button
                   type="button"
@@ -887,6 +965,22 @@ export function DashboardApp() {
               </div>
             )}
 
+            {/* Shortcut: Crear Nuevo Usuario (Admin & Sub Admin) */}
+            {hasAdminPrivileges && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUserToEdit(null);
+                  setIsUserModalOpen(true);
+                }}
+                className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200/90 shadow-2xs transition-all cursor-pointer"
+                title="Crear un nuevo usuario, alumna, profesora o sub-administradora"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Crear Usuario</span>
+              </button>
+            )}
+
             {/* Shortcut: Mis Cursos Comprados */}
             <button
               type="button"
@@ -898,16 +992,16 @@ export function DashboardApp() {
               }`}
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Mis Cursos ({userEnrollments.length})</span>
+              <span>Mis Cursos{userEnrollments.length > 0 ? ` (${userEnrollments.length})` : ''}</span>
             </button>
 
             {/* User Chip */}
-            <div className="flex items-center gap-2.5 pl-2">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white flex items-center justify-center text-xs font-black shadow-sm shadow-pink-500/30">
+            <div className="flex items-center gap-2 pl-1 sm:pl-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white flex items-center justify-center text-xs font-black shadow-sm shadow-pink-500/30 shrink-0">
                 {supabaseUser.email?.charAt(0).toUpperCase()}
               </div>
-              <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-bold text-[#2A1828] leading-tight">
+              <div className="hidden md:flex flex-col text-left">
+                <span className="text-xs font-bold text-[#2A1828] leading-tight truncate max-w-[120px]">
                   {profile.full_name || supabaseUser.email?.split('@')[0]}
                 </span>
                 <span className="text-[10px] text-[#E31B6D] font-bold uppercase tracking-wider">
@@ -919,20 +1013,20 @@ export function DashboardApp() {
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-6 max-w-7xl w-full mx-auto overflow-x-clip">
           {/* =======================================================================
            * TAB: DASHBOARD OVERVIEW (Course Sales Business Model & Girls & Law Theme)
            * ======================================================================= */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-7">
+            <div className="space-y-5 sm:space-y-7">
               {/* Header Title & Action Buttons */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBF3] border border-pink-200 text-[10px] font-black uppercase text-[#E31B6D] tracking-wider mb-1">
                     <Sparkles className="w-3 h-3" />
                     Panel de Gestión &amp; Cursos Jurídicos
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828] tracking-tight">
+                  <h1 className="text-xl sm:text-3xl font-serif italic font-bold text-[#2A1828] tracking-tight">
                     Dashboard Académico
                   </h1>
                   <p className="text-xs text-[#6A5A6D] font-medium mt-0.5">
@@ -940,111 +1034,102 @@ export function DashboardApp() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => {
                       setCourseToEdit(null);
                       setIsModalOpen(true);
                     }}
-                    className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] transition-all shadow-[0_4px_14px_rgba(227,27,109,0.25)] flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] transition-all shadow-[0_4px_14px_rgba(227,27,109,0.25)] flex items-center gap-1.5 cursor-pointer active:scale-95"
                   >
                     <Plus className="w-4 h-4" />
                     <span>+ Crear Nuevo Curso</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('supabase-sync')}
-                    className="px-4 py-2.5 rounded-full text-xs font-bold text-[#2A1828] bg-white hover:bg-[#FFF0F6] border border-pink-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Database className="w-3.5 h-3.5 text-[#E31B6D]" />
-                    <span>Supabase BD</span>
-                  </button>
                 </div>
               </div>
 
-              {/* 4 Metric Cards (Girls & Law Cushion Style) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 4 Metric Cards (Clean 2x2 Grid on Mobile, 4 Cols on Desktop) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                 {/* Card 1: Hero Signature Pink Cushion Card */}
-                <div className="rounded-3xl p-6 bg-gradient-to-br from-[#E31B6D] via-[#EA3883] to-[#F06292] text-white flex flex-col justify-between shadow-[0_12px_32px_rgba(227,27,109,0.22)] relative overflow-hidden">
+                <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-gradient-to-br from-[#E31B6D] via-[#EA3883] to-[#F06292] text-white flex flex-col justify-between shadow-[0_12px_32px_rgba(227,27,109,0.22)] relative overflow-hidden">
                   <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-pink-100 uppercase tracking-wider">
+                    <span className="text-[10px] sm:text-xs font-bold text-pink-100 uppercase tracking-wider">
                       Cursos en Catálogo
                     </span>
                     <button
                       type="button"
                       onClick={() => setActiveTab('courses')}
-                      className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0"
                     >
-                      <ArrowUpRight className="w-4 h-4" />
+                      <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
-                  <div className="mt-4">
-                    <span className="text-4xl font-serif italic font-black">{totalCourses}</span>
-                    <p className="text-xs text-pink-100 font-bold mt-1">
-                      {publishedCourses} activos para venta · {draftCourses} borrador
+                  <div className="mt-2.5 sm:mt-4">
+                    <span className="text-2xl sm:text-4xl font-serif italic font-black">{totalCourses}</span>
+                    <p className="text-[10px] sm:text-xs text-pink-100 font-bold mt-1 line-clamp-1 sm:line-clamp-none">
+                      {publishedCourses} activos · {draftCourses} borrador
                     </p>
                   </div>
                 </div>
 
                 {/* Card 2: Alumnas Matriculadas */}
-                <div className="rounded-3xl p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
+                <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
-                      Alumnas Matriculadas
+                    <span className="text-[10px] sm:text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
+                      Alumnas
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D]">
-                      <Users className="w-4 h-4" />
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D] shrink-0">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-serif italic font-black text-[#2A1828]">
+                  <div className="mt-2.5 sm:mt-4">
+                    <span className="text-2xl sm:text-4xl font-serif italic font-black text-[#2A1828]">
                       {totalStudents}
                     </span>
-                    <p className="text-xs text-emerald-600 font-bold mt-1">
-                      +18 ventas este mes
+                    <p className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-1 line-clamp-1 sm:line-clamp-none">
+                      {totalStudents > 0 ? `${totalStudents} matriculadas` : 'Sin registros'}
                     </p>
                   </div>
                 </div>
 
                 {/* Card 3: Ticket Promedio por Curso */}
-                <div className="rounded-3xl p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
+                <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
+                    <span className="text-[10px] sm:text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
                       Ticket Promedio
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D]">
-                      <DollarSign className="w-4 h-4" />
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D] shrink-0">
+                      <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-serif italic font-black text-[#2A1828]">
+                  <div className="mt-2.5 sm:mt-4">
+                    <span className="text-xl sm:text-3xl font-serif italic font-black text-[#2A1828]">
                       S/. {avgTicket} PEN
                     </span>
-                    <p className="text-xs text-[#6A5A6D] font-bold mt-1">
-                      Pago Único por Masterclass
+                    <p className="text-[10px] sm:text-xs text-[#6A5A6D] font-bold mt-1 line-clamp-1 sm:line-clamp-none">
+                      Pago Único
                     </p>
                   </div>
                 </div>
 
                 {/* Card 4: Ingresos Totales por Cursos Vendidos */}
-                <div className="rounded-3xl p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
+                <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
-                      Ventas de Cursos
+                    <span className="text-[10px] sm:text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
+                      Ventas Cursos
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D]">
-                      <Award className="w-4 h-4" />
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D] shrink-0">
+                      <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-serif italic font-black text-[#2A1828]">
+                  <div className="mt-2.5 sm:mt-4">
+                    <span className="text-xl sm:text-3xl font-serif italic font-black text-[#2A1828]">
                       S/. {totalRevenue.toLocaleString()}
                     </span>
-                    <p className="text-xs text-emerald-600 font-bold mt-1">
-                      PEN Confirmados (Yape/Banco/Tarjeta)
+                    <p className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-1 line-clamp-1 sm:line-clamp-none">
+                      PEN Confirmados
                     </p>
                   </div>
                 </div>
@@ -1115,8 +1200,33 @@ export function DashboardApp() {
 
                     {/* View: Cards Grid */}
                     {viewMode === 'grid' ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
-                        {filteredCourses.map((c) => (
+                      filteredCourses.length === 0 ? (
+                        <div className="p-10 rounded-3xl bg-[#FFF9FB] border border-pink-100/90 text-center space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-pink-100 text-[#E31B6D] flex items-center justify-center mx-auto">
+                            <BookOpen className="w-6 h-6" />
+                          </div>
+                          <h4 className="font-serif italic font-bold text-base text-[#2A1828]">
+                            No hay cursos en la base de datos
+                          </h4>
+                          <p className="text-xs text-[#6A5A6D] max-w-sm mx-auto">
+                            Comienza creando tu primera masterclass con video y temario.
+                          </p>
+                          {hasAdminPrivileges && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCourseToEdit(null);
+                                setIsModalOpen(true);
+                              }}
+                              className="px-5 py-2 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] shadow-xs cursor-pointer"
+                            >
+                              + Crear Primer Curso
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
+                          {filteredCourses.map((c) => (
                           <div
                             key={c.id}
                             className="group bg-white rounded-3xl border border-pink-100 hover:border-pink-200 overflow-hidden shadow-[0_8px_24px_rgba(227,27,109,0.04)] hover:shadow-[0_12px_32px_rgba(227,27,109,0.1)] transition-all flex flex-col justify-between"
@@ -1169,7 +1279,7 @@ export function DashboardApp() {
                             </div>
 
                             <div className="px-5 py-3 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
-                              {currentRole === 'admin' ? (
+                              {hasAdminPrivileges ? (
                                 <button
                                   type="button"
                                   onClick={() => handleToggleStatus(c)}
@@ -1212,7 +1322,7 @@ export function DashboardApp() {
                                 >
                                   <PlayCircle className="w-4 h-4" />
                                 </button>
-                                {currentRole === 'admin' && (
+                                {hasAdminPrivileges && (
                                   <>
                                     <button
                                       type="button"
@@ -1240,6 +1350,7 @@ export function DashboardApp() {
                           </div>
                         ))}
                       </div>
+                      )
                     ) : (
                       /* View: Table */
                       <div className="overflow-x-auto pt-2">
@@ -1255,7 +1366,14 @@ export function DashboardApp() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-pink-100 font-medium">
-                            {filteredCourses.map((c) => (
+                            {filteredCourses.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="py-8 text-center text-xs text-[#A08A9E]">
+                                  No hay cursos registrados en la base de datos aún.
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredCourses.map((c) => (
                               <tr key={c.id} className="hover:bg-pink-50/50 transition-colors">
                                 <td className="py-3 pr-2">
                                   <div className="flex items-center gap-3">
@@ -1326,7 +1444,8 @@ export function DashboardApp() {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                            ))
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -1355,51 +1474,67 @@ export function DashboardApp() {
                     </div>
 
                     <div className="space-y-3.5">
-                      {students.slice(0, 4).map((stu) => (
-                        <div key={stu.id} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-[#E31B6D] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                              {stu.name.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-[#2A1828] truncate">{stu.name}</p>
-                              <p className="text-[10px] text-[#A08A9E] truncate">{stu.course_title}</p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-serif italic font-black text-[#E31B6D] shrink-0">
-                            S/. {stu.amount_paid} PEN
-                          </span>
+                      {students.length === 0 ? (
+                        <div className="p-4 rounded-2xl bg-[#FFF9FB] border border-pink-100 text-center">
+                          <p className="text-xs text-[#A08A9E] font-medium">Sin compras registradas aún</p>
+                          <p className="text-[10px] text-pink-400 mt-0.5">Las compras en la BD aparecerán aquí</p>
                         </div>
-                      ))}
+                      ) : (
+                        students.slice(0, 4).map((stu) => (
+                          <div key={stu.id} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-[#E31B6D] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                                {stu.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-[#2A1828] truncate">{stu.name}</p>
+                                <p className="text-[10px] text-[#A08A9E] truncate">{stu.course_title}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-serif italic font-black text-[#E31B6D] shrink-0">
+                              S/. {stu.amount_paid} PEN
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
-                  {/* Widget 2: Recordatorio de Clínica en Vivo */}
+                  {/* Widget 2: Recordatorio de Sesión en Vivo */}
                   <div className="bg-white rounded-3xl p-6 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
                         Sesión en Vivo
                       </span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {totalCourses > 0 && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />}
                     </div>
 
-                    <div>
-                      <h4 className="font-serif italic font-bold text-sm text-[#2A1828]">
-                        Clínica de Juicio Oral con Roxana Rivera
-                      </h4>
-                      <p className="text-xs text-[#6A5A6D] mt-0.5">
-                        Jueves · 18:00 - 20:00 (Sala Zoom VIP)
-                      </p>
-                    </div>
+                    {totalCourses > 0 ? (
+                      <>
+                        <div>
+                          <h4 className="font-serif italic font-bold text-sm text-[#2A1828]">
+                            Clínica de Juicio Oral con Roxana Rivera
+                          </h4>
+                          <p className="text-xs text-[#6A5A6D] mt-0.5">
+                            Jueves · 18:00 - 20:00 (Sala Zoom VIP)
+                          </p>
+                        </div>
 
-                    <button
-                      type="button"
-                      onClick={() => showToast('Abriendo enlace de sala virtual Zoom...')}
-                      className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
-                    >
-                      <Video className="w-4 h-4" />
-                      <span>Ingresar a la Sala en Vivo</span>
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => showToast('Abriendo enlace de sala virtual Zoom...')}
+                          className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                        >
+                          <Video className="w-4 h-4" />
+                          <span>Ingresar a la Sala en Vivo</span>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="text-center py-2 space-y-1">
+                        <p className="text-xs text-[#A08A9E] font-medium">Sin sesiones programadas</p>
+                        <p className="text-[10px] text-pink-400">Programa tus clases en vivo desde el panel</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Widget 3: Progreso General de Alumnas */}
@@ -1408,24 +1543,33 @@ export function DashboardApp() {
                       Tasa de Finalización de Clases
                     </h3>
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-3xl font-serif italic font-black text-[#2A1828]">
-                          88.4%
-                        </span>
-                        <p className="text-[11px] text-[#6A5A6D]">Alumnas que completan los videos</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-full bg-[#FFF0F6] border-2 border-[#E31B6D] flex items-center justify-center font-bold text-xs text-[#E31B6D]">
-                        88%
-                      </div>
-                    </div>
+                    {totalStudents > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-3xl font-serif italic font-black text-[#2A1828]">
+                              {avgProgress}%
+                            </span>
+                            <p className="text-[11px] text-[#6A5A6D]">Alumnas que completan los videos</p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full bg-[#FFF0F6] border-2 border-[#E31B6D] flex items-center justify-center font-bold text-xs text-[#E31B6D]">
+                            {avgProgress}%
+                          </div>
+                        </div>
 
-                    <div className="w-full h-2 rounded-full bg-pink-100 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] rounded-full"
-                        style={{ width: '88%' }}
-                      />
-                    </div>
+                        <div className="w-full h-2 rounded-full bg-pink-100 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] rounded-full"
+                            style={{ width: `${avgProgress}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-2 space-y-1">
+                        <p className="text-xs text-[#A08A9E] font-medium">0% · Sin actividad aún</p>
+                        <p className="text-[10px] text-pink-400">Aparecerá cuando tus alumnas completen lecciones</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1433,131 +1577,190 @@ export function DashboardApp() {
           )}
 
           {/* =======================================================================
-           * TAB: GESTIÓN DE CURSOS
+           * TAB: CATÁLOGO Y GESTIÓN DE CURSOS (Visible para Alumnas y Administradoras)
            * ======================================================================= */}
-          {activeTab === 'courses' && (currentRole === 'admin' || currentRole === 'profesora') && (
+          {activeTab === 'courses' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBF3] border border-pink-200 text-[10px] font-black uppercase text-[#E31B6D] tracking-wider mb-1">
+                    <Sparkles className="w-3 h-3" />
+                    {hasStaffPrivileges ? 'Administración Académica' : 'Formación Jurídica de Élite'}
+                  </div>
                   <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828] tracking-tight">
                     Catálogo de Cursos &amp; Masterclasses
                   </h1>
                   <p className="text-xs text-[#6A5A6D] font-medium">
-                    Crea y gestiona tus formaciones, precios de venta y contenidos en video.
+                    {hasStaffPrivileges
+                      ? 'Crea y gestiona tus formaciones, precios de venta y contenidos en video.'
+                      : 'Explora nuestras masterclasses clínicas con acceso de por vida y videos en alta definición.'}
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCourseToEdit(null);
-                    setIsModalOpen(true);
-                  }}
-                  className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] transition-all shadow-[0_4px_14px_rgba(227,27,109,0.25)] flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Crear Nuevo Curso</span>
-                </button>
+                {hasStaffPrivileges && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourseToEdit(null);
+                      setIsModalOpen(true);
+                    }}
+                    className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] transition-all shadow-[0_4px_14px_rgba(227,27,109,0.25)] flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Crear Nuevo Curso</span>
+                  </button>
+                )}
               </div>
 
               {/* Grid of All Courses */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-[0_10px_28px_rgba(227,27,109,0.06)] hover:shadow-[0_16px_36px_rgba(227,27,109,0.12)] transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="relative aspect-[16/10] bg-pink-50 overflow-hidden">
-                        <img src={c.cover_image} alt={c.title} className="w-full h-full object-cover" />
-                        <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D] shadow-xs">
-                          {c.category}
-                        </span>
-                        <span
-                          className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-xs ${
-                            c.status === 'published' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-slate-900'
-                          }`}
-                        >
-                          {c.status === 'published' ? 'Venta Activa' : 'Borrador'}
-                        </span>
-                      </div>
+                {filteredCourses.map((c) => {
+                  const userHasCourse = isEnrolled(c.id);
 
-                      <div className="p-6 space-y-3">
-                        <div className="flex items-center justify-between text-xs text-[#A08A9E]">
-                          <span>{c.duration} · {c.modules_count || c.modules?.length || 3} módulos</span>
-                          <span className="text-[#E31B6D] font-bold">{c.level}</span>
+                  return (
+                    <div
+                      key={c.id}
+                      className="bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-[0_10px_28px_rgba(227,27,109,0.06)] hover:shadow-[0_16px_36px_rgba(227,27,109,0.12)] transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="relative aspect-[16/10] bg-pink-50 overflow-hidden">
+                          <img src={c.cover_image} alt={c.title} className="w-full h-full object-cover" />
+                          <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D] shadow-xs">
+                            {c.category}
+                          </span>
+                          <span
+                            className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-xs ${
+                              userHasCourse
+                                ? 'bg-emerald-500 text-white'
+                                : c.status === 'published'
+                                ? 'bg-[#E31B6D] text-white'
+                                : 'bg-amber-400 text-slate-900'
+                            }`}
+                          >
+                            {userHasCourse ? '✓ Desbloqueado' : c.status === 'published' ? 'Venta Activa' : 'Borrador'}
+                          </span>
                         </div>
-                        <h3 className="font-serif italic font-bold text-lg text-[#2A1828] leading-snug line-clamp-2">
-                          {c.title}
-                        </h3>
-                        <p className="text-xs text-[#6A5A6D] line-clamp-2 leading-relaxed">
-                          {c.description}
-                        </p>
-                        <div className="pt-3 flex items-center justify-between border-t border-pink-100 text-xs">
-                          <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
-                          <div className="text-right">
-                            <span className="text-lg font-serif italic font-black text-[#E31B6D]">
-                              S/. {c.price} PEN
-                            </span>
-                            <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
-                              Pago Único
-                            </span>
+
+                        <div className="p-6 space-y-3">
+                          <div className="flex items-center justify-between text-xs text-[#A08A9E]">
+                            <span>{c.duration} · {c.modules_count || c.modules?.length || 1} módulos</span>
+                            <span className="text-[#E31B6D] font-bold">{c.level}</span>
+                          </div>
+                          <h3 className="font-serif italic font-bold text-lg text-[#2A1828] leading-snug line-clamp-2">
+                            {c.title}
+                          </h3>
+                          <p className="text-xs text-[#6A5A6D] line-clamp-2 leading-relaxed">
+                            {c.description || 'Masterclass jurídica de alto impacto con análisis de teoría del caso y litigio estratégico.'}
+                          </p>
+                          <div className="pt-3 flex items-center justify-between border-t border-pink-100 text-xs">
+                            <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
+                            <div className="text-right">
+                              <span className="text-lg font-serif italic font-black text-[#E31B6D]">
+                                S/. {c.price} PEN
+                              </span>
+                              <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
+                                Pago Único
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="p-4 px-6 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(c)}
-                        className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
-                          c.status === 'published'
-                            ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                            : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                        }`}
-                      >
-                        {c.status === 'published' ? 'Pausar' : 'Activar'}
-                      </button>
+                      <div className="p-4 px-6 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
+                        {hasStaffPrivileges ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(c)}
+                              className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                                c.status === 'published'
+                                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                  : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              }`}
+                            >
+                              {c.status === 'published' ? 'Pausar' : 'Activar'}
+                            </button>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCourseForClassroom(c);
-                            if (c.modules?.[0]?.lessons?.[0]) {
-                              setActiveLesson(c.modules[0].lessons[0]);
-                            }
-                            setActiveTab('classroom');
-                          }}
-                          className="px-3 py-1.5 rounded-full bg-white text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-[#FFF0F6]"
-                        >
-                          <Play className="w-3 h-3 fill-current" />
-                          <span>Ver Aula</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCourseToEdit(c);
-                            setIsModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D]"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCourse(c.id, c.title)}
-                          className="p-1.5 rounded-full hover:bg-rose-50 text-rose-600"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCourseForClassroom(c);
+                                  if (c.modules?.[0]?.lessons?.[0]) {
+                                    setActiveLesson(c.modules[0].lessons[0]);
+                                  }
+                                  setActiveTab('classroom');
+                                }}
+                                className="px-3 py-1.5 rounded-full bg-white text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-[#FFF0F6]"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>Ver Aula</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCourseToEdit(c);
+                                  setIsModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D]"
+                                title="Editar"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCourse(c.id, c.title)}
+                                className="p-1.5 rounded-full hover:bg-rose-50 text-rose-600"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </>
+                        ) : userHasCourse ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCourseForClassroom(c);
+                              if (c.modules?.[0]?.lessons?.[0]) {
+                                setActiveLesson(c.modules[0].lessons[0]);
+                              }
+                              setActiveTab('classroom');
+                            }}
+                            className="w-full py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all cursor-pointer"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>Entrar al Aula Virtual</span>
+                          </button>
+                        ) : (
+                          <div className="w-full flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCourseForClassroom(c);
+                                if (c.modules?.[0]?.lessons?.[0]) {
+                                  setActiveLesson(c.modules[0].lessons[0]);
+                                }
+                                setActiveTab('classroom');
+                              }}
+                              className="px-3.5 py-2 rounded-full bg-white text-[#6A5A6D] hover:text-[#E31B6D] border border-pink-200 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Ver Muestra
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCheckout(c)}
+                              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:brightness-105 active:scale-95 transition-all cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Comprar S/. {c.price}</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1580,7 +1783,7 @@ export function DashboardApp() {
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBF3] text-[10px] font-black text-[#E31B6D] uppercase tracking-wider mb-2">
                       <Sparkles className="w-3 h-3" />
-                      Aula Virtual &amp; Streaming Supabase
+                      Aula Virtual &amp; Streaming HD
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828]">
                       {selectedCourseForClassroom?.title || 'Litigio de Alto Impacto'}
@@ -1591,7 +1794,7 @@ export function DashboardApp() {
                   </div>
 
                   {/* Course Switcher if multiple courses exist */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <select
                       value={selectedCourseForClassroom?.id || ''}
                       onChange={(e) => {
@@ -1603,7 +1806,7 @@ export function DashboardApp() {
                           }
                         }
                       }}
-                      className="px-4 py-2 rounded-full bg-[#FFF0F6] border border-pink-200 text-xs font-bold text-[#2A1828] focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30"
+                      className="w-full sm:w-auto max-w-full px-4 py-2 rounded-full bg-[#FFF0F6] border border-pink-200 text-xs font-bold text-[#2A1828] focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/30 truncate"
                     >
                       {courses.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -1616,10 +1819,10 @@ export function DashboardApp() {
 
                 {/* Free Preview Warning / Course Purchase Banner if not enrolled */}
                 {!hasPurchasedClassroomCourse && selectedCourseForClassroom && (
-                  <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#FFF0F6] via-[#FFEBF3] to-white border border-pink-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-[#E31B6D] text-white flex items-center justify-center shrink-0 shadow-sm shadow-pink-500/30">
-                        <Lock className="w-5 h-5" />
+                  <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#FFF0F6] via-[#FFEBF3] to-white border border-pink-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-[#E31B6D] text-white flex items-center justify-center shrink-0 shadow-sm shadow-pink-500/30">
+                        <Lock className="w-4 h-4" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -1639,7 +1842,7 @@ export function DashboardApp() {
                     <button
                       type="button"
                       onClick={() => handleOpenCheckout(selectedCourseForClassroom)}
-                      className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs shadow-[0_8px_20px_rgba(227,27,109,0.3)] hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs shadow-[0_8px_20px_rgba(227,27,109,0.3)] hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
                     >
                       <Sparkles className="w-4 h-4" />
                       <span>Comprar por S/. {selectedCourseForClassroom.price} PEN</span>
@@ -1654,44 +1857,48 @@ export function DashboardApp() {
                     {/* Video Player Card / Anti-Leak Secure Lock Screen */}
                     {!currentLessonLocked ? (
                       <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-pink-200/40 relative aspect-video flex flex-col justify-end">
-                        {/* HTML5 Video Element */}
-                        <video
-                          ref={videoPlayerRef}
-                          key={activeLesson?.id || 'default-player'}
-                          controls
-                          playsInline
-                          className="w-full h-full object-cover"
-                          poster={selectedCourseForClassroom?.cover_image}
-                        >
-                          <source
-                            src={
-                              activeLesson?.video_url
-                                ? getSupabaseVideoUrl(activeLesson.video_url)
-                                : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-                            }
-                            type="video/mp4"
+                        {isYouTubeUrl(activeLesson?.video_url || '') ? (
+                          <iframe
+                            key={activeLesson?.id || 'yt-player'}
+                            src={getYouTubeEmbedUrl(activeLesson?.video_url || '')!}
+                            title={activeLesson?.title || 'Video de Clase'}
+                            className="w-full h-full aspect-video border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
                           />
-                          Tu navegador no soporta reproducción de video HTML5.
-                        </video>
+                        ) : (
+                          /* HTML5 Video Element */
+                          <video
+                            ref={videoPlayerRef}
+                            key={activeLesson?.id || 'default-player'}
+                            controls
+                            playsInline
+                            className="w-full h-full object-cover"
+                            poster={selectedCourseForClassroom?.cover_image}
+                          >
+                            <source
+                              src={
+                                activeLesson?.video_url
+                                  ? getSupabaseVideoUrl(activeLesson.video_url)
+                                  : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                              }
+                              type="video/mp4"
+                            />
+                            Tu navegador no soporta reproducción de video HTML5.
+                          </video>
+                        )}
 
-                        {/* Supabase Storage Pill Overlay */}
+                        {/* Stream Provider Pill Overlay */}
                         <div className="absolute top-4 left-4 z-20 pointer-events-none">
-                          <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-black uppercase text-pink-300 border border-white/10 flex items-center gap-1.5 shadow-md">
+                          <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-[10px] font-black uppercase text-pink-300 border border-white/10 flex items-center gap-1.5 shadow-md">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            {activeLesson?.is_free_preview && !hasPurchasedClassroomCourse
+                            {isYouTubeUrl(activeLesson?.video_url || '')
+                              ? 'YouTube No Listado · HD'
+                              : activeLesson?.is_free_preview && !hasPurchasedClassroomCourse
                               ? 'Clase de Muestra Gratuita'
-                              : 'Supabase Storage CDN · 4K'}
+                              : 'Video Streaming · 4K'}
                           </span>
                         </div>
-
-                        {/* Storage Path Indicator */}
-                        {activeLesson?.storage_path && (
-                          <div className="absolute top-4 right-4 z-20 pointer-events-none hidden sm:block">
-                            <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[9px] font-mono text-slate-300 border border-white/10">
-                              bucket: {activeLesson.storage_path}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     ) : (
                       /* ZERO LEAK LOCK SCREEN: The private video URL is NEVER rendered or exposed in the DOM */
@@ -1759,10 +1966,29 @@ export function DashboardApp() {
                           </h2>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Admin / Teacher Video Upload Button */}
-                          {(currentRole === 'admin' || currentRole === 'profesora') && (
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                          {/* Admin / Teacher Video Options (YouTube Unlisted & MP4) */}
+                          {hasStaffPrivileges && (
                             <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentUrl = activeLesson?.video_url || '';
+                                  const inputUrl = window.prompt(
+                                    'Pega el enlace o ID de YouTube en modo "No listado" (ej: https://youtu.be/...):\n\nReproducción inmediata sin límite de peso y en alta definición HD.',
+                                    currentUrl
+                                  );
+                                  if (inputUrl !== null && inputUrl.trim()) {
+                                    handleUpdateLessonVideoUrl(inputUrl.trim());
+                                  }
+                                }}
+                                className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-full bg-red-50 hover:bg-red-100/70 text-red-600 border border-red-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                                title="Vincular video de YouTube No Listado (Gratis & Ilimitado)"
+                              >
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                <span>YouTube (No listado)</span>
+                              </button>
+
                               <input
                                 type="file"
                                 ref={lessonFileInputRef}
@@ -1774,18 +2000,18 @@ export function DashboardApp() {
                                 type="button"
                                 disabled={isUploadingLessonVideo}
                                 onClick={() => lessonFileInputRef.current?.click()}
-                                className="px-4 py-2.5 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
-                                title="Subir video a Supabase Storage para esta clase"
+                                className="w-full sm:w-auto justify-center px-3.5 py-2.5 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                                title="Subir archivo de video MP4 directo"
                               >
                                 {isUploadingLessonVideo ? (
                                   <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Subiendo a Supabase...</span>
+                                    <span>Subiendo MP4...</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Upload className="w-4 h-4" />
-                                    <span>Subir Video a Clase</span>
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Subir MP4</span>
                                   </>
                                 )}
                               </button>
@@ -1806,7 +2032,7 @@ export function DashboardApp() {
                                 toggleLessonCompleted(activeLesson.id);
                               }
                             }}
-                            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+                            className={`w-full sm:w-auto justify-center px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
                               activeLesson && completedLessonIds.has(activeLesson.id)
                                 ? 'bg-emerald-500 text-white'
                                 : 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.3)]'
@@ -1833,7 +2059,7 @@ export function DashboardApp() {
                         </p>
 
                         {/* Downloadable Materials (Protected if not enrolled) */}
-                        <div className="pt-2 flex flex-wrap gap-2.5">
+                        <div className="pt-2 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-2.5">
                           <button
                             type="button"
                             onClick={() => {
@@ -1847,7 +2073,7 @@ export function DashboardApp() {
                                 showToast('Descargando: Plantilla_Matriz_Factica_Word.docx');
                               }
                             }}
-                            className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto justify-center px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
                           >
                             {hasPurchasedClassroomCourse ? (
                               <Download className="w-3.5 h-3.5" />
@@ -1869,7 +2095,7 @@ export function DashboardApp() {
                                 showToast('Descargando: Esquema_Objeciones_PDF.pdf');
                               }
                             }}
-                            className="px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                            className="w-full sm:w-auto justify-center px-4 py-2 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
                           >
                             {hasPurchasedClassroomCourse ? (
                               <FileText className="w-3.5 h-3.5" />
@@ -2002,23 +2228,56 @@ export function DashboardApp() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="px-5 py-3 rounded-2xl bg-[#FFF5F9] border border-pink-100 text-center">
-                    <span className="text-2xl font-serif italic font-black text-[#E31B6D]">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                  <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#FFF5F9] border border-pink-100 text-center">
+                    <span className="text-xl sm:text-2xl font-serif italic font-black text-[#E31B6D]">
                       {userEnrollments.length}
                     </span>
-                    <span className="block text-[10px] font-bold text-[#A08A9E] uppercase">
-                      Cursos Comprados
+                    <span className="block text-[9px] sm:text-[10px] font-bold text-[#A08A9E] uppercase">
+                      {userEnrollments.length === 1 ? 'Curso Comprado' : 'Cursos Comprados'}
                     </span>
                   </div>
-                  <div className="px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-center">
-                    <span className="text-sm font-black text-emerald-700">Acceso</span>
-                    <span className="block text-[10px] font-bold text-emerald-600 uppercase">
-                      De por Vida
+                  <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-center">
+                    <span className="text-xs sm:text-sm font-black text-emerald-700">
+                      {currentLevel === 'vip' ? 'Membresía VIP' : 'Acceso'}
+                    </span>
+                    <span className="block text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase">
+                      {currentLevel === 'vip' ? 'Catálogo Total' : 'De por Vida'}
                     </span>
                   </div>
                 </div>
               </div>
+
+              {/* VIP Member Special Banner */}
+              {currentLevel === 'vip' && (
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#2A1828] via-[#3D1A35] to-[#2A1828] text-white border border-pink-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-[#E31B6D] to-[#F06292] text-white flex items-center justify-center shrink-0 shadow-lg shadow-pink-500/30">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-serif italic font-bold text-white">
+                          Pase VIP Activo · Acceso Ilimitado a la Academia
+                        </p>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[9px] font-black uppercase">
+                          VIP Full Access
+                        </span>
+                      </div>
+                      <p className="text-xs text-pink-200/80 mt-0.5">
+                        Tu cuenta tiene habilitadas todas las grabaciones clínicas, temarios y expedientes procesales descargables de Girls &amp; Law.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('courses')}
+                    className="w-full sm:w-auto text-center px-5 py-2.5 rounded-full bg-white text-[#E31B6D] font-bold text-xs shadow-md hover:bg-pink-50 transition-all shrink-0 cursor-pointer"
+                  >
+                    Ver Todo el Catálogo
+                  </button>
+                </div>
+              )}
 
               {/* Grid of Purchased Courses */}
               <div>
@@ -2026,9 +2285,11 @@ export function DashboardApp() {
                   <h2 className="text-lg font-serif italic font-bold text-[#2A1828]">
                     Tus Masterclasses Disponibles
                   </h2>
-                  <span className="text-xs text-[#E31B6D] font-bold">
-                    {userEnrollments.length} Comprados
-                  </span>
+                  {userEnrollments.length > 0 && (
+                    <span className="text-xs text-[#E31B6D] font-bold">
+                      {userEnrollments.length} {userEnrollments.length === 1 ? 'Comprado' : 'Comprados'}
+                    </span>
+                  )}
                 </div>
 
                 {userEnrollments.length === 0 ? (
@@ -2202,25 +2463,258 @@ export function DashboardApp() {
           )}
 
           {/* =======================================================================
-           * TAB: ALUMNAS INSCRITAS (VENTAS DE CURSOS INDIVIDUALES)
+           * TAB: PLANES & SUSCRIPCIONES (Plan Base, Plan Full con Meet, Plan Ultra)
            * ======================================================================= */}
-          {activeTab === 'students' && currentRole === 'admin' && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-pink-100">
-                <div>
-                  <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
-                    Alumnas &amp; Ventas de Cursos
-                  </h2>
-                  <p className="text-xs text-[#6A5A6D]">
-                    Registro de compras individuales de masterclasses y avance en video
-                  </p>
+          {activeTab === 'subscriptions' && (
+            <div className="space-y-8">
+              {/* Header Hero */}
+              <div className="text-center max-w-2xl mx-auto space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FFEBF3] border border-pink-200 text-[10px] font-black uppercase text-[#E31B6D] tracking-wider">
+                  <Crown className="w-3.5 h-3.5" />
+                  Membresías &amp; Planes 2026
                 </div>
-                <span className="px-4 py-1.5 rounded-full bg-[#FFF0F6] text-[#E31B6D] text-xs font-black">
-                  {students.length} Alumnas Registradas
-                </span>
+                <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2A1828]">
+                  Elige tu plan de formación legal
+                </h1>
+                <p className="text-xs text-[#6A5A6D]">
+                  Suscripciones mensuales flexibles en Soles PEN. Cancela o cambia de plan cuando quieras.
+                </p>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* 3 Subscription Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-stretch">
+                {SUBSCRIPTION_PLANS.map((p) => {
+                  const isCurrent = profile?.level === p.level;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all relative overflow-hidden ${
+                        p.popular
+                          ? 'bg-gradient-to-b from-[#FFF0F6] via-white to-[#FFEBF3] border-2 border-[#E31B6D] shadow-[0_16px_40px_rgba(227,27,109,0.18)] scale-102 z-10'
+                          : 'bg-white border border-pink-200/90 shadow-[0_10px_30px_rgba(227,27,109,0.06)] hover:border-pink-300'
+                      }`}
+                    >
+                      {p.popular && (
+                        <div className="absolute top-0 right-0 bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-[9px] font-black uppercase tracking-wider py-1 px-4 rounded-bl-2xl shadow-xs">
+                          ★ Más Elegido
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#E31B6D] bg-pink-100/70 px-2.5 py-0.5 rounded-full">
+                            {p.badge}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                              Tu Plan Actual
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="font-serif italic font-bold text-xl text-[#2A1828]">
+                          {p.name}
+                        </h3>
+                        <p className="text-xs font-bold text-[#E31B6D] mt-0.5">
+                          {p.tagline}
+                        </p>
+                        <p className="text-[11px] text-[#6A5A6D] mt-2 leading-relaxed">
+                          {p.description}
+                        </p>
+
+                        <div className="mt-5 pb-5 border-b border-pink-100/80">
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-serif italic font-black text-3xl sm:text-4xl text-[#E31B6D]">
+                              S/. {p.price}
+                            </span>
+                            <span className="text-xs font-bold text-[#A08A9E]">
+                              PEN / mes
+                            </span>
+                          </div>
+                          {p.compare_price && (
+                            <span className="text-[10px] text-[#A08A9E] line-through">
+                              Antes: S/. {p.compare_price} PEN
+                            </span>
+                          )}
+                        </div>
+
+                        <ul className="mt-5 space-y-2.5 text-xs font-bold text-[#2A1828]">
+                          {p.features.map((feat, idx) => (
+                            <li key={idx} className="flex items-start gap-2.5">
+                              <CheckCircle2 className="w-4 h-4 text-[#E31B6D] shrink-0 mt-0.5" />
+                              <span className="leading-snug">{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="mt-7 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCourseToBuy(null);
+                            setSelectedPlanForCheckout(p);
+                            setIsCheckoutOpen(true);
+                          }}
+                          className={`w-full py-3 px-5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-98 ${
+                            p.popular
+                              ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)]'
+                              : 'bg-[#FFF0F6] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200'
+                          }`}
+                        >
+                          <span>{isCurrent ? 'Plan Activo (Renovar)' : `Suscribirme a ${p.name}`}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Informative Guarantee Card */}
+              <div className="max-w-2xl mx-auto p-5 rounded-3xl bg-white border border-pink-100 text-center space-y-1.5 shadow-xs">
+                <span className="text-[10px] font-black uppercase text-[#E31B6D] tracking-wider block">
+                  ✦ Garantía Incondicional de 14 Días
+                </span>
+                <p className="text-xs text-[#6A5A6D]">
+                  Accede a los cursos y clínicas. Si sientes que no transforma tu práctica procesal, solicita el reembolso completo sin preguntas.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* =======================================================================
+           * TAB: ALUMNAS & VENTAS (Unificado: Ingresos de Ventas + Matrículas)
+           * ======================================================================= */}
+          {activeTab === 'students' && hasAdminPrivileges && (
+            <div className="space-y-6">
+              {/* Rendimiento de Ventas por Curso */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-4">
+                <div>
+                  <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
+                    Rendimiento de Ventas por Masterclass
+                  </h2>
+                  <p className="text-xs text-[#6A5A6D]">
+                    Desglose de ingresos confirmados y alumnas por cada formación
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {courses.length === 0 ? (
+                    <p className="text-xs text-[#A08A9E] italic col-span-3">No hay cursos creados en la base de datos aún.</p>
+                  ) : (
+                    courses.map((c) => {
+                      const revenue = c.price * (c.students_count || 0);
+                      return (
+                        <div
+                          key={c.id}
+                          className="p-5 rounded-3xl bg-[#FFF5F9] border border-pink-100 space-y-2"
+                        >
+                          <span className="text-[10px] font-black uppercase text-[#E31B6D] tracking-wider">
+                            {c.category} · {c.level}
+                          </span>
+                          <h4 className="font-serif italic font-bold text-sm text-[#2A1828] line-clamp-1">
+                            {c.title}
+                          </h4>
+                          <div className="flex items-baseline justify-between pt-2">
+                            <span className="text-2xl font-serif italic font-black text-[#E31B6D]">
+                              S/. {revenue.toLocaleString()} PEN
+                            </span>
+                            <span className="text-xs text-[#6A5A6D] font-bold">
+                              {c.students_count} alumnas
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Registro de Alumnas Matriculadas */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-pink-100">
+                  <div>
+                    <h3 className="text-lg font-serif italic font-bold text-[#2A1828]">
+                      Registro de Alumnas Matriculadas
+                    </h3>
+                    <p className="text-xs text-[#6A5A6D]">
+                      Compras individuales de masterclasses y avance en clases de video
+                    </p>
+                  </div>
+                  <span className="px-4 py-1.5 rounded-full bg-[#FFF0F6] text-[#E31B6D] text-xs font-black">
+                    {students.length} Alumnas Registradas
+                  </span>
+                </div>
+
+              {/* Mobile Student Cards (sm:hidden) */}
+              <div className="sm:hidden space-y-3">
+                {students.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-[#A08A9E]">
+                    No hay alumnas matriculadas ni ventas registradas en la base de datos aún.
+                  </div>
+                ) : (
+                  students.map((stu) => (
+                    <div
+                      key={stu.id}
+                      className="p-4 rounded-2xl bg-[#FFF9FB] border border-pink-100 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-[#E31B6D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                            {stu.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-[#2A1828] text-xs truncate">{stu.name}</p>
+                            <p className="text-[10px] text-[#A08A9E] truncate">{stu.email}</p>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 ${
+                            stu.status === 'Completado'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-[#FFF0F6] text-[#E31B6D] border border-pink-200'
+                          }`}
+                        >
+                          {stu.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-pink-100/60">
+                        <div>
+                          <span className="text-[10px] text-[#A08A9E] block">Curso</span>
+                          <span className="font-serif italic font-bold text-[#2A1828] text-xs line-clamp-1">
+                            {stu.course_title}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-[#A08A9E] block">Monto Pagado</span>
+                          <span className="font-serif italic font-black text-[#E31B6D] text-xs">
+                            S/. {stu.amount_paid} PEN
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-[#6A5A6D]">Progreso en video</span>
+                          <span className="font-bold text-[#E31B6D]">{stu.progress}%</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-pink-100 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] rounded-full"
+                            style={{ width: `${stu.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table (hidden sm:block) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-pink-100 text-[#A08A9E] uppercase tracking-wider text-[10px] font-black">
@@ -2233,7 +2727,14 @@ export function DashboardApp() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-pink-100 font-medium">
-                    {students.map((stu) => (
+                    {students.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-xs text-[#A08A9E]">
+                          No hay alumnas matriculadas ni ventas registradas en la base de datos aún.
+                        </td>
+                      </tr>
+                    ) : (
+                      students.map((stu) => (
                       <tr key={stu.id} className="hover:bg-pink-50/50 transition-colors">
                         <td className="py-4 pr-3">
                           <div className="flex items-center gap-3">
@@ -2276,62 +2777,19 @@ export function DashboardApp() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* =======================================================================
-           * TAB: RENDIMIENTO & VENTAS
+           * TAB: ROLES Y NIVELES (ADMIN & SUB ADMIN - CRUD COMPLETO DE CUENTAS)
            * ======================================================================= */}
-          {activeTab === 'metrics' && currentRole === 'admin' && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-6">
-                <div>
-                  <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
-                    Rendimiento de Ventas por Curso
-                  </h2>
-                  <p className="text-xs text-[#6A5A6D]">
-                    Desglose de ingresos brutos por cada masterclass individual
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {courses.map((c) => {
-                    const revenue = c.price * (c.students_count || 0);
-                    return (
-                      <div
-                        key={c.id}
-                        className="p-5 rounded-3xl bg-[#FFF5F9] border border-pink-100 space-y-2"
-                      >
-                        <span className="text-[10px] font-black uppercase text-[#E31B6D] tracking-wider">
-                          {c.category}
-                        </span>
-                        <h4 className="font-serif italic font-bold text-sm text-[#2A1828] line-clamp-1">
-                          {c.title}
-                        </h4>
-                        <div className="flex items-baseline justify-between pt-2">
-                          <span className="text-2xl font-serif italic font-black text-[#E31B6D]">
-                            S/. {revenue.toLocaleString()} PEN
-                          </span>
-                          <span className="text-xs text-[#6A5A6D] font-bold">
-                            {c.students_count} alumnas
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* =======================================================================
-           * TAB: ROLES Y NIVELES (ADMIN ONLY - CRUD COMPLETO DE CUENTAS)
-           * ======================================================================= */}
-          {activeTab === 'users' && currentRole === 'admin' && (
+          {activeTab === 'users' && hasAdminPrivileges && (
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-6">
               {/* Header with Title and Create Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-pink-100">
@@ -2381,6 +2839,7 @@ export function DashboardApp() {
                   {[
                     { id: 'all', label: 'Todos' },
                     { id: 'admin', label: 'Administradoras' },
+                    { id: 'coordinadora', label: 'Coordinadoras (Sub Admin)' },
                     { id: 'profesora', label: 'Profesoras' },
                     { id: 'alumna', label: 'Alumnas' },
                   ].map((filter) => (
@@ -2400,14 +2859,118 @@ export function DashboardApp() {
                 </div>
               </div>
 
-              {/* Table of Users */}
-              <div className="overflow-x-auto">
+              {/* Mobile Cards for Users (sm:hidden) */}
+              <div className="sm:hidden space-y-3">
+                {filteredUserList.map((u) => (
+                  <div
+                    key={u.id}
+                    className="p-4 rounded-2xl bg-[#FFF9FB] border border-pink-100 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-[#E31B6D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          {u.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-[#2A1828] text-xs truncate">
+                            {u.full_name || u.email.split('@')[0]}
+                          </p>
+                          <p className="text-[10px] text-[#A08A9E] font-mono truncate">{u.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserToEdit(u);
+                            setIsUserModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D] hover:text-[#E31B6D]"
+                          title="Editar usuario"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          disabled={u.id === supabaseUser?.id}
+                          className="p-1.5 rounded-full hover:bg-rose-100 text-rose-500 disabled:opacity-30"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Role & Level Selects */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="text-[10px] font-bold text-[#A08A9E] uppercase block mb-1">
+                          Rol
+                        </label>
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole, u.level)}
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-[11px] font-bold"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="coordinadora">Sub Admin</option>
+                          <option value="profesora">Profesora</option>
+                          <option value="alumna">Alumna</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-[#A08A9E] uppercase block mb-1">
+                          Nivel
+                        </label>
+                        <select
+                          value={u.level}
+                          onChange={(e) => handleLevelChange(u.id, u.role, e.target.value as UserLevel)}
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#2A1828] text-[11px] font-bold"
+                        >
+                          <option value="inicial">Inicial</option>
+                          <option value="pro">Pro 4K</option>
+                          <option value="vip">VIP Clínico</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Course Assignment Dropdown */}
+                    <div>
+                      <label className="text-[10px] font-bold text-[#A08A9E] uppercase block mb-1">
+                        Matricular Curso
+                      </label>
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleEnrollUser(u.id, e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#E31B6D] text-[11px] font-bold"
+                      >
+                        <option value="" disabled>+ Asignar Curso...</option>
+                        {courses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title} (S/. {c.price})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Table of Users (hidden sm:block) */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-pink-100 text-[#A08A9E] uppercase tracking-wider text-[10px] font-black">
                       <th className="pb-3">Usuario / Titular</th>
                       <th className="pb-3">Rol en la Plataforma</th>
                       <th className="pb-3">Nivel de Acceso</th>
+                      <th className="pb-3">Matricular / Asignar Curso</th>
                       <th className="pb-3">Estado</th>
                       <th className="pb-3 text-right">Acciones</th>
                     </tr>
@@ -2438,6 +3001,7 @@ export function DashboardApp() {
                             className="px-3.5 py-1.5 rounded-full bg-[#FFF0F6] border border-pink-200 text-[#2A1828] text-xs font-bold focus:outline-none"
                           >
                             <option value="admin">Administradora</option>
+                            <option value="coordinadora">Coordinadora (Sub Admin)</option>
                             <option value="profesora">Profesora</option>
                             <option value="alumna">Alumna</option>
                           </select>
@@ -2451,6 +3015,25 @@ export function DashboardApp() {
                             <option value="inicial">Inicial (Básico)</option>
                             <option value="pro">Pro (Completo 4K)</option>
                             <option value="vip">VIP (Clínicas &amp; Mentorías)</option>
+                          </select>
+                        </td>
+                        <td className="py-4">
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleEnrollUser(u.id, e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-[#FFF0F6] hover:bg-[#FFE4EF] border border-pink-200 text-[#E31B6D] text-xs font-bold focus:outline-none cursor-pointer transition-colors"
+                          >
+                            <option value="" disabled>+ Asignar Curso...</option>
+                            {courses.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.title} (S/. {c.price})
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="py-4">
@@ -2489,104 +3072,6 @@ export function DashboardApp() {
               </div>
             </div>
           )}
-
-          {/* =======================================================================
-           * TAB: SUPABASE & VIDEO STORAGE (ADMIN ONLY)
-           * ======================================================================= */}
-          {activeTab === 'supabase-sync' && currentRole === 'admin' && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-pink-100">
-                <div className="w-12 h-12 rounded-2xl bg-[#FFF0F6] border border-pink-200 flex items-center justify-center text-[#E31B6D]">
-                  <Database className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-serif italic font-bold text-[#2A1828]">
-                    Base de Datos Supabase &amp; Video Storage
-                  </h2>
-                  <p className="text-xs text-[#6A5A6D]">
-                    Almacenamiento de lecciones en video, tablas de cursos, perfiles y matrículas
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Box */}
-              <div className="p-5 rounded-3xl bg-[#FFF5F9] border border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#A08A9E]">
-                    Proyecto Supabase Conectado
-                  </span>
-                  <p className="text-xs font-mono font-bold text-[#2A1828]">
-                    https://gfyqhlaytcrpbidgrijj.supabase.co
-                  </p>
-                  <p className="text-[11px] text-[#6A5A6D]">
-                    Bucket de almacenamiento de videos configurado: <code className="text-[#E31B6D] font-bold font-mono">course-videos</code>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={testSupabaseConnection}
-                  disabled={syncStatus === 'checking'}
-                  className="px-5 py-2.5 rounded-full bg-white hover:bg-[#FFF0F6] text-[#2A1828] text-xs font-bold border border-pink-200 shadow-xs flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-[#E31B6D] ${syncStatus === 'checking' ? 'animate-spin' : ''}`} />
-                  <span>Probar Conexión</span>
-                </button>
-              </div>
-
-              {syncMessage && (
-                <div className="p-4 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span>{syncMessage}</span>
-                </div>
-              )}
-
-              {/* Step By Step Instructions */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FFF0F6] to-[#FFEBF3] border border-pink-200/80 space-y-3">
-                <h3 className="font-serif italic font-bold text-sm text-[#2A1828]">
-                  Instrucciones para migrar tu Supabase en 1 clic:
-                </h3>
-                <ol className="text-xs text-[#6A5A6D] space-y-1.5 list-decimal pl-5 leading-relaxed">
-                  <li>Haz clic en el botón <strong>&quot;Copiar Script SQL Completo&quot;</strong> abajo.</li>
-                  <li>
-                    Abre el{' '}
-                    <a
-                      href="https://supabase.com/dashboard/project/gfyqhlaytcrpbidgrijj/sql"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#E31B6D] underline font-bold"
-                    >
-                      SQL Editor de tu Supabase
-                    </a>.
-                  </li>
-                  <li>Pega todo el script y pulsa <strong>Run (Ejecutar)</strong>.</li>
-                  <li>
-                    ¡Listo! Creará automáticamente todas las tablas (<code className="font-mono text-[#E31B6D]">profiles</code>, <code className="font-mono text-[#E31B6D]">courses</code>, <code className="font-mono text-[#E31B6D]">modules</code>, <code className="font-mono text-[#E31B6D]">lessons</code>, <code className="font-mono text-[#E31B6D]">enrollments</code>), el bucket de Storage <code className="font-mono text-[#E31B6D]">course-videos</code> con sus políticas de streaming, y asignará tu usuario como <strong>Admin VIP</strong>.
-                  </li>
-                </ol>
-              </div>
-
-              {/* SQL Script View */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-[#2A1828]">
-                    Script SQL Completo (BD + Video Storage + Políticas + Cursos)
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={copySqlToClipboard}
-                    className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:shadow-[0_8px_20px_rgba(227,27,109,0.35)] text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>{copiedSql ? '¡Copiado con Éxito!' : 'Copiar Script SQL'}</span>
-                  </button>
-                </div>
-
-                <pre className="p-5 rounded-3xl bg-[#1E142B] text-pink-200/90 text-xs font-mono overflow-x-auto max-h-96 leading-relaxed border border-pink-900/30">
-                  {SUPABASE_SQL_MIGRATION}
-                </pre>
-              </div>
-            </div>
-          )}
         </main>
       </div>
 
@@ -2612,15 +3097,17 @@ export function DashboardApp() {
         userToEdit={userToEdit}
       />
 
-      {/* Course Checkout Modal (Compra en Soles PEN con Yape/Plin/Tarjeta) */}
+      {/* Course & Subscription Checkout Modal (Compra en Soles PEN con Yape/Plin/Tarjeta) */}
       <CourseCheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => {
           setIsCheckoutOpen(false);
           setCourseToBuy(null);
+          setSelectedPlanForCheckout(null);
         }}
         onSuccess={handleCheckoutSuccess}
         course={courseToBuy}
+        plan={selectedPlanForCheckout}
         currentUserId={supabaseUser?.id || ''}
       />
     </div>

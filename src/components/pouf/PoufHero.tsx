@@ -43,14 +43,14 @@ export function PoufHero() {
           </div>
 
           {/* 1st-Pouf Heading with Highlights */}
-          <h1 className="font-pouf font-black text-ink text-center lg:text-left text-[26px] xs:text-[30px] sm:text-[40px] lg:text-[46px] tracking-tight leading-[1.2] sm:leading-[1.15]">
+          <h1 className="font-pouf font-black text-ink text-center lg:text-left text-[23px] xs:text-[27px] sm:text-[40px] lg:text-[46px] tracking-tight leading-[1.25] sm:leading-[1.15] break-words">
             {t.title1}{' '}
-            <Highlight tone="pink" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1 text-[23px] xs:text-[27px] sm:text-[38px] lg:text-[44px]">
+            <Highlight tone="pink" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1 text-[20px] xs:text-[24px] sm:text-[38px] lg:text-[44px]">
               {t.titleHighlight1}
             </Highlight>
             .<br className="hidden sm:inline" />{' '}
             <span className="font-serif italic font-normal">{t.title2}</span>{' '}
-            <Highlight tone="yellow" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1 text-[23px] xs:text-[27px] sm:text-[38px] lg:text-[44px]">
+            <Highlight tone="yellow" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1 text-[20px] xs:text-[24px] sm:text-[38px] lg:text-[44px]">
               {t.titleHighlight2}
             </Highlight>{' '}
             {t.title3}

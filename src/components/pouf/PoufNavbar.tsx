@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from './Button';
 import { InstagramIcon, SpotifyIcon } from '@/components/ui/SocialIcons';
 import { useLanguage, DICTIONARY } from '@/lib/i18n';
+import { GraduationCap } from 'lucide-react';
 
 export function PoufNavbar() {
   const [activeLink, setActiveLink] = useState('#trailer');
@@ -67,8 +68,8 @@ export function PoufNavbar() {
           })}
         </div>
 
-        {/* Right Actions: Tactile Sliding Switch + Spotify + Desktop CTA Button */}
-        <div className="flex items-center gap-2 sm:gap-3.5">
+        {/* Right Actions: Tactile Sliding Switch + Campus + Desktop CTA Button */}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
           {/* REAL SLIDING LANGUAGE SWITCH [ ES ⇄ EN ] */}
           <div
             role="switch"
@@ -76,12 +77,12 @@ export function PoufNavbar() {
             aria-label="Cambiar idioma entre Español e Inglés"
             title={lang === 'es' ? 'Cambiar a English' : 'Cambiar a Español'}
             onClick={toggleLanguage}
-            className="relative flex items-center w-[66px] sm:w-[78px] h-[32px] sm:h-[36px] p-0.5 sm:p-1 rounded-full bg-[#FFF0F6] border-2 border-pink-200/90 shadow-inner cursor-pointer select-none transition-all active:scale-95"
+            className="relative flex items-center w-[58px] sm:w-[74px] h-[30px] sm:h-[34px] p-0.5 sm:p-1 rounded-full bg-[#FFF0F6] border-2 border-pink-200/90 shadow-inner cursor-pointer select-none transition-all active:scale-95 shrink-0"
           >
             {/* Sliding Thumb Pill */}
             <div
-              className={`absolute top-0.5 sm:top-1 bottom-0.5 sm:bottom-1 w-[28px] sm:w-[34px] rounded-full bg-[#E31B6D] shadow-md transition-all duration-300 ease-out flex items-center justify-center text-white text-[9.5px] sm:text-[11px] font-black pointer-events-none ${
-                lang === 'en' ? 'left-[33px] sm:left-[38px]' : 'left-0.5 sm:left-1'
+              className={`absolute top-0.5 sm:top-1 bottom-0.5 sm:bottom-1 w-[25px] sm:w-[32px] rounded-full bg-[#E31B6D] shadow-md transition-all duration-300 ease-out flex items-center justify-center text-white text-[9px] sm:text-[10.5px] font-black pointer-events-none ${
+                lang === 'en' ? 'left-[29px] sm:left-[36px]' : 'left-0.5 sm:left-1'
               }`}
             >
               {lang.toUpperCase()}
@@ -93,7 +94,7 @@ export function PoufNavbar() {
                 e.stopPropagation();
                 setLanguage('es');
               }}
-              className={`w-1/2 text-center text-[9.5px] sm:text-[11px] font-black transition-colors ${
+              className={`w-1/2 text-center text-[9px] sm:text-[10.5px] font-black transition-colors ${
                 lang === 'es' ? 'text-transparent' : 'text-muted hover:text-ink'
               }`}
             >
@@ -104,7 +105,7 @@ export function PoufNavbar() {
                 e.stopPropagation();
                 setLanguage('en');
               }}
-              className={`w-1/2 text-center text-[9.5px] sm:text-[11px] font-black transition-colors ${
+              className={`w-1/2 text-center text-[9px] sm:text-[10.5px] font-black transition-colors ${
                 lang === 'en' ? 'text-transparent' : 'text-muted hover:text-ink'
               }`}
             >
@@ -112,7 +113,7 @@ export function PoufNavbar() {
             </span>
           </div>
 
-          {/* Spotify Official Podcast Trigger */}
+          {/* Spotify Official Podcast Trigger - Hidden on mobile to avoid clutter */}
           <button
             type="button"
             data-podcast-trigger="true"
@@ -121,10 +122,10 @@ export function PoufNavbar() {
             }}
             title={t.podcastTitle}
             aria-label={t.podcastTitle}
-            className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1DB954]/10 hover:bg-[#1DB954] text-[#1DB954] hover:text-white flex items-center justify-center transition-all shadow-xs border border-[#1DB954]/30 cushion-control active:translate-y-[1px] cursor-pointer group"
+            className="hidden sm:flex relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1DB954]/10 hover:bg-[#1DB954] text-[#1DB954] hover:text-white items-center justify-center transition-all shadow-xs border border-[#1DB954]/30 cushion-control active:translate-y-[1px] cursor-pointer group shrink-0"
           >
-            <SpotifyIcon className="w-4 h-4 sm:w-5.5 sm:h-5.5 transition-transform group-hover:scale-110" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#1DB954] ring-2 ring-white animate-pulse" />
+            <SpotifyIcon className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#1DB954] ring-2 ring-white animate-pulse" />
           </button>
 
           {/* Instagram Official - shown on tablet and desktop */}
@@ -134,25 +135,26 @@ export function PoufNavbar() {
             rel="noreferrer"
             aria-label="Instagram Oficial @girlsandlaw"
             title="Instagram @girlsandlaw"
-            className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white items-center justify-center text-[#E1306C] hover:bg-[#E1306C] hover:text-white transition-all shadow-xs border border-pink-200 cushion-control active:translate-y-[1px] group cursor-pointer"
+            className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white items-center justify-center text-[#E1306C] hover:bg-[#E1306C] hover:text-white transition-all shadow-xs border border-pink-200 cushion-control active:translate-y-[1px] group cursor-pointer shrink-0"
           >
             <InstagramIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform group-hover:scale-110" />
           </a>
 
-          {/* Campus / Dashboard Portal */}
+          {/* Campus / Dashboard Portal - ALWAYS VISIBLE IN MOBILE & DESKTOP */}
           <a
             href="/dashboard"
-            title="Panel de Gestión de Cursos & Campus"
-            className="hidden sm:inline-flex items-center gap-1 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-black text-ink hover:text-[#E31B6D] hover:bg-[#FFF0F6] border border-pink-200/90 transition-all cursor-pointer shadow-2xs"
+            title="Ingresar al Campus Virtual & Aula"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-black bg-gradient-to-r from-[#FFF0F6] to-[#FFEBF3] text-[#E31B6D] hover:bg-[#FFE4EF] border border-pink-200/90 transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
           >
-            <span>{lang === 'es' ? 'Campus' : 'Portal'}</span>
+            <GraduationCap className="w-3.5 h-3.5 text-[#E31B6D]" />
+            <span>Campus</span>
           </a>
 
-          {/* CTA Inscribirme Button - Desktop/Tablet only, since Mobile has sticky PoufBottomNav with Unirme */}
+          {/* CTA Inscribirme Button - Desktop only (hidden on mobile where sticky bottom nav or scroll handles it) */}
           <Button
             size="sm"
             tone="pink"
-            className="hidden sm:inline-flex !px-3.5 sm:!px-5 !py-2 sm:!py-2.5 !text-xs sm:!text-sm font-black whitespace-nowrap"
+            className="hidden lg:inline-flex !px-4 xl:!px-5 !py-2 sm:!py-2.5 !text-xs sm:!text-sm font-black whitespace-nowrap shrink-0"
             onClick={() => {
               document.getElementById('precios')?.scrollIntoView({ behavior: 'smooth' });
             }}

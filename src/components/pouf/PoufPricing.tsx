@@ -42,9 +42,9 @@ export function PoufPricing() {
         </div>
       </div>
 
-      {/* Pouf Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto">
-        {/* Tier 1: Digital Pro */}
+      {/* Pouf Pricing Cards: 3 Planes de Suscripción */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch max-w-6xl mx-auto">
+        {/* Tier 1: Plan Base */}
         <Card motion="lift" className="flex flex-col justify-between">
           <div>
             <Badge tone="purple">{t.card1.badge}</Badge>
@@ -84,7 +84,7 @@ export function PoufPricing() {
               size="lg"
               variant="quiet"
               onClick={() => {
-                window.location.href = '#';
+                window.location.href = '/dashboard?plan=plan-base';
               }}
             >
               {t.card1.cta}
@@ -92,12 +92,12 @@ export function PoufPricing() {
           </div>
         </Card>
 
-        {/* Tier 2: VIP Masterclass (Featured) */}
-        <Card motion="lift" className="flex flex-col justify-between bg-[#FFF5F9] border-2 border-pink">
+        {/* Tier 2: Plan Full (Featured) */}
+        <Card motion="lift" className="flex flex-col justify-between bg-[#FFF5F9] border-2 border-pink relative shadow-xl">
           <div>
             <div className="flex justify-between items-center">
               <Badge tone="pink">{t.card2.badge}</Badge>
-              <Badge tone="yellow">{lang === 'es' ? 'En Vivo + Mentoría' : 'Live + Mentorship'}</Badge>
+              <Badge tone="yellow">{lang === 'es' ? '★ Meet con Roxana' : '★ Meet with Roxana'}</Badge>
             </div>
 
             <Heading level={2} className="mt-3 text-ink">
@@ -136,10 +136,62 @@ export function PoufPricing() {
               size="lg"
               tone="pink"
               onClick={() => {
-                window.location.href = '#';
+                window.location.href = '/dashboard?plan=plan-full';
               }}
             >
               {t.card2.cta}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Tier 3: Plan Ultra (Acceso Total VIP) */}
+        <Card motion="lift" className="flex flex-col justify-between bg-white border border-pink-200">
+          <div>
+            <div className="flex justify-between items-center">
+              <Badge tone="purple">{t.card3.badge}</Badge>
+              <Badge tone="mint">{lang === 'es' ? 'Acceso Total' : 'Total Access'}</Badge>
+            </div>
+
+            <Heading level={2} className="mt-3 text-ink">
+              {t.card3.title}
+            </Heading>
+            <div className="mt-1">
+              <Text size="sm" muted>
+                {t.card3.desc}
+              </Text>
+            </div>
+
+            <div className="mt-6 pb-6 border-b border-pink-100">
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif font-black text-4xl sm:text-5xl text-ink">
+                  {billing === 'single' ? t.card3.priceSingle : t.card3.priceInstallments}
+                </span>
+                <span className="text-xs font-bold text-muted">
+                  {billing === 'single' ? `PEN · ${t.card3.pricePeriodSingle}` : `PEN · ${t.card3.pricePeriod}`}
+                </span>
+              </div>
+            </div>
+
+            <ul className="mt-6 space-y-3 text-xs sm:text-sm font-bold text-ink">
+              {t.card3.features.map((feat, idx) => (
+                <li key={idx} className="flex items-center gap-3">
+                  <span className="text-[#E31B6D] font-black">✓</span>
+                  <span>{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-8 pt-4">
+            <Button
+              block
+              size="lg"
+              variant="quiet"
+              onClick={() => {
+                window.location.href = '/dashboard?plan=plan-ultra';
+              }}
+            >
+              {t.card3.cta}
             </Button>
           </div>
         </Card>
