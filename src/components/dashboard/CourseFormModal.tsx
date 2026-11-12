@@ -17,6 +17,7 @@ import {
   Award,
   Layers,
   Video,
+  Crown,
   UploadCloud,
   CheckCircle2,
   Trash2,
@@ -318,10 +319,92 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             />
           </div>
 
-          {/* Category, Level, Modality */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Plan Requerido, Categoría, Modalidad, Duración, Módulos */}
+          <div className="p-4 rounded-2xl bg-[#FFF5F8] border border-pink-200/90 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-[#E31B6D]" /> Plan de Membresía Requerido para este Curso
+              </label>
+              <span className="text-[10px] font-bold text-[#E31B6D] bg-white px-2.5 py-0.5 rounded-full border border-pink-200">
+                Modelo por Suscripción
+              </span>
+            </div>
+            <p className="text-[11px] text-[#6A5A6D] leading-relaxed">
+              Las alumnas acceden a los cursos según su suscripción activa. No necesitas fijar precios individuales para cada video.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <label
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                  formData.level === 'Inicial'
+                    ? 'bg-white border-[#E31B6D] ring-2 ring-[#E31B6D]/20 shadow-xs'
+                    : 'bg-white/70 border-pink-100 hover:border-pink-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#2A1828]">Plan Base</span>
+                  <input
+                    type="radio"
+                    name="membership_level"
+                    checked={formData.level === 'Inicial'}
+                    onChange={() => setFormData({ ...formData, level: 'Inicial' })}
+                    className="accent-[#E31B6D]"
+                  />
+                </div>
+                <p className="text-[10px] text-[#A08A9E] mt-1">
+                  Disponible para todas las suscriptoras desde el Plan Base.
+                </p>
+              </label>
+
+              <label
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                  formData.level === 'Intermedio' || formData.level === 'Avanzado'
+                    ? 'bg-white border-[#E31B6D] ring-2 ring-[#E31B6D]/20 shadow-xs'
+                    : 'bg-white/70 border-pink-100 hover:border-pink-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#2A1828]">Plan Full (Pro)</span>
+                  <input
+                    type="radio"
+                    name="membership_level"
+                    checked={formData.level === 'Intermedio' || formData.level === 'Avanzado'}
+                    onChange={() => setFormData({ ...formData, level: 'Intermedio' })}
+                    className="accent-[#E31B6D]"
+                  />
+                </div>
+                <p className="text-[10px] text-[#A08A9E] mt-1">
+                  Desbloqueado para Plan Full y Plan Ultra.
+                </p>
+              </label>
+
+              <label
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                  formData.level === 'Clínico VIP'
+                    ? 'bg-white border-[#E31B6D] ring-2 ring-[#E31B6D]/20 shadow-xs'
+                    : 'bg-white/70 border-pink-100 hover:border-pink-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#2A1828]">Plan Ultra (VIP)</span>
+                  <input
+                    type="radio"
+                    name="membership_level"
+                    checked={formData.level === 'Clínico VIP'}
+                    onChange={() => setFormData({ ...formData, level: 'Clínico VIP' })}
+                    className="accent-[#E31B6D]"
+                  />
+                </div>
+                <p className="text-[10px] text-[#A08A9E] mt-1">
+                  Exclusivo para suscriptoras VIP con Mentoría de Roxana.
+                </p>
+              </label>
+            </div>
+          </div>
+
+          {/* Categoría, Modalidad, Duración, Módulos */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5 text-[#E31B6D]" /> Categoría
               </label>
               <select
@@ -341,25 +424,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
-                <Award className="w-3.5 h-3.5 text-[#E31B6D]" /> Nivel
-              </label>
-              <select
-                value={formData.level}
-                onChange={(e) =>
-                  setFormData({ ...formData, level: e.target.value as Course['level'] })
-                }
-                className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-bold text-xs focus:outline-none"
-              >
-                <option value="Inicial">Inicial</option>
-                <option value="Intermedio">Intermedio</option>
-                <option value="Avanzado">Avanzado</option>
-                <option value="Clínico VIP">Clínico VIP</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
+              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-[#E31B6D]" /> Modalidad
               </label>
               <select
@@ -374,38 +439,6 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                 <option value="Híbrido">Híbrido</option>
               </select>
             </div>
-          </div>
-
-          {/* Pricing (Venta de Cursos - Pago Único en Soles) & Duration */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-[#E31B6D]" /> Precio (S/.)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.price ?? 50}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-black text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider">
-                Antes (S/.)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.compare_at_price ?? ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, compare_at_price: Number(e.target.value) })
-                }
-                placeholder="120"
-                className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-black text-sm"
-              />
-            </div>
 
             <div className="space-y-1.5">
               <label className="text-[11px] sm:text-xs font-black text-[#2A1828] uppercase tracking-wider">
@@ -415,6 +448,7 @@ export function CourseFormModal({ isOpen, onClose, onSave, courseToEdit }: Cours
                 type="text"
                 value={formData.duration || '8 horas'}
                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                placeholder="Ej: 8 horas"
                 className="w-full px-3 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-bold text-sm"
               />
             </div>

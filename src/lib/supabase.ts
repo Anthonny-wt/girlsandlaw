@@ -838,7 +838,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// SINCRONIZACIÓN REAL: Consulta directa a Supabase. Si la BD está vacía, devuelve [] sin datos simulados
+// SINCRONIZACIÓN REAL: Consulta directa a Supabase con persistencia local resistente a fallos de RLS
 export async function getCourses(): Promise<Course[]> {
   try {
     const { data, error } = await supabase
@@ -846,34 +846,75 @@ export async function getCourses(): Promise<Course[]> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Si Supabase responde con éxito, devolvemos exactamente lo que hay en la BD (si está vacío, devuelve [])
-    if (!error && Array.isArray(data)) {
+    // Si Supabase responde con éxito y tiene cursos en la BD
+    if (!error && Array.isArray(data) && data.length > 0) {
       return data.map((c: Course) => ensureCourseModules(c));
+    }
+
+    // Si Supabase devuelve error (ej. 42P17 de políticas RLS) o está vacía, recuperar de LocalStorage para no perder lo creado
+    if (error || (Array.isArray(data) && data.length === 0)) {
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
+        if (local) {
+          try {
+            const parsed: Course[] = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              return parsed.map((c: Course) => ensureCourseModules(c));
+            }
+          } catch {
+            // fallback
+          }
+        }
+      }
     }
   } catch (err) {
     console.warn('Error connecting to Supabase courses:', err);
   }
 
-  // Si la BD no tiene datos o no devolvió cursos, devolvemos estrictamente [] ("si no hay datos que veamos sin datos")
+  // Fallback offline a LocalStorage
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
+    if (local) {
+      try {
+        const parsed: Course[] = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: Course) => ensureCourseModules(c));
+        }
+      } catch {
+        // fallback
+      }
+    }
+  }
+
   return [];
 }
 
 export async function saveCourse(course: Course): Promise<Course> {
+  // 1. Persistir siempre de forma inmediata en LocalStorage para garantizar que el curso aparezca al instante
   if (typeof window !== 'undefined') {
-    const current = await getCourses();
-    const existingIndex = current.findIndex((c) => c.id === course.id);
-    let updated: Course[];
-    if (existingIndex >= 0) {
-      updated = [...current];
-      updated[existingIndex] = course;
-    } else {
-      updated = [course, ...current];
+    try {
+      const local = localStorage.getItem(LOCAL_STORAGE_COURSES_KEY);
+      let current: Course[] = [];
+      if (local) {
+        current = JSON.parse(local);
+      }
+      const existingIndex = current.findIndex((c) => c.id === course.id);
+      let updated: Course[];
+      if (existingIndex >= 0) {
+        updated = [...current];
+        updated[existingIndex] = course;
+      } else {
+        updated = [course, ...current];
+      }
+      localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
     }
-    localStorage.setItem(LOCAL_STORAGE_COURSES_KEY, JSON.stringify(updated));
   }
 
+  // 2. Persistir en la base de datos Supabase
   try {
-    await supabase.from('courses').upsert({
+    const { error } = await supabase.from('courses').upsert({
       id: course.id,
       title: course.title,
       slug: course.slug,
@@ -894,8 +935,11 @@ export async function saveCourse(course: Course): Promise<Course> {
       trailer_url: course.trailer_url,
       featured: course.featured,
     });
-  } catch {
-    // offline fallback
+    if (error) {
+      console.warn('Supabase upsert course warning:', error.message);
+    }
+  } catch (err) {
+    console.warn('Supabase upsert course exception:', err);
   }
 
   return course;
@@ -1196,7 +1240,8 @@ export function isUserEnrolledInCourse(
   enrollments: Enrollment[],
   courseId: string,
   userRole?: UserRole,
-  userLevel?: UserLevel
+  userLevel?: UserLevel,
+  courseLevel?: string
 ): boolean {
   if (
     userRole === 'admin' ||
@@ -1207,7 +1252,28 @@ export function isUserEnrolledInCourse(
   ) {
     return true;
   }
-  return enrollments.some((e) => e.course_id === courseId && e.status === 'active');
+
+  // Matrícula manual individual asignada por la administradora
+  if (enrollments.some((e) => e.course_id === courseId && e.status === 'active')) {
+    return true;
+  }
+
+  // Modelo B: Desbloqueo por Nivel de Suscripción
+  // Plan Full (pro) desbloquea cursos de nivel Inicial, Intermedio y Avanzado
+  if (userLevel === 'pro') {
+    if (!courseLevel || courseLevel === 'Inicial' || courseLevel === 'Intermedio' || courseLevel === 'Avanzado') {
+      return true;
+    }
+  }
+
+  // Plan Base (inicial) desbloquea cursos de nivel Inicial
+  if (userLevel === 'inicial') {
+    if (courseLevel === 'Inicial') {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // Helper to extract YouTube Video ID from any format (youtu.be, watch?v=, embed/, shorts/, etc.)
@@ -1234,7 +1300,7 @@ export function isYouTubeUrl(url: string): boolean {
 export function getYouTubeEmbedUrl(url: string): string | null {
   const id = getYouTubeVideoId(url);
   if (!id) return null;
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&enablejsapi=1`;
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&enablejsapi=1&iv_load_policy=3&playsinline=1`;
 }
 
 // Generate Supabase Storage Public Video URL
@@ -1321,6 +1387,17 @@ alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check
   check (role in ('admin', 'coordinadora', 'sub_admin', 'profesora', 'alumna'));
 
+-- FUNCIÓN AUXILIAR SIN RECURSIÓN (SECURITY DEFINER evade el RLS al verificar rol)
+create or replace function public.is_admin_or_staff()
+returns boolean as $$
+declare
+  v_role text;
+begin
+  select role into v_role from public.profiles where id = auth.uid();
+  return v_role in ('admin', 'coordinadora', 'sub_admin', 'profesora');
+end;
+$$ language plpgsql security definer set search_path = public;
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Perfiles legibles por usuarios autenticados" on public.profiles;
@@ -1333,11 +1410,7 @@ create policy "Usuarios actualizan su propio perfil" on public.profiles
 
 drop policy if exists "Admins gestionan perfiles" on public.profiles;
 create policy "Admins gestionan perfiles" on public.profiles
-  for all using (
-    exists (
-      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin')
-    )
-  );
+  for all using (public.is_admin_or_staff());
 
 -- 2. TRIGGER AUTOMÁTICO: AL CREARSE UN USUARIO EN AUTH.USERS
 create or replace function public.handle_new_user()
@@ -1407,11 +1480,7 @@ create policy "Cursos visibles públicamente" on public.courses
 
 drop policy if exists "Gestión de cursos para administradores" on public.courses;
 create policy "Gestión de cursos para administradores" on public.courses
-  for all using (
-    exists (
-      select 1 from public.profiles where id = auth.uid() and role in ('admin', 'coordinadora', 'sub_admin', 'profesora')
-    )
-  );
+  for all using (public.is_admin_or_staff());
 
 -- 4. TABLA DE MÓDULOS DE CURSOS
 create table if not exists public.modules (

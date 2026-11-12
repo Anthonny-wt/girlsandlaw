@@ -39,6 +39,7 @@ import { CourseFormModal } from './CourseFormModal';
 import { UserFormModal } from './UserFormModal';
 import { CourseCheckoutModal } from './CourseCheckoutModal';
 import { StudentSettingsModal } from './StudentSettingsModal';
+import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
 import {
   LayoutDashboard,
   BookOpen,
@@ -279,7 +280,8 @@ export function DashboardApp() {
   };
 
   const isEnrolled = (courseId: string) => {
-    return isUserEnrolledInCourse(userEnrollments, courseId, currentRole, currentLevel);
+    const course = courses.find((c) => c.id === courseId);
+    return isUserEnrolledInCourse(userEnrollments, courseId, currentRole, currentLevel, course?.level);
   };
 
   const handleOpenCheckout = (course: Course) => {
@@ -1259,34 +1261,34 @@ export function DashboardApp() {
                   </div>
                 </div>
 
-                {/* Card 3: Ticket Promedio por Curso */}
+                {/* Card 3: Planes y Membresías */}
                 <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] sm:text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
-                      Ticket Promedio
+                      Planes Activos
                     </span>
                     <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D] shrink-0">
-                      <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div className="mt-2.5 sm:mt-4">
                     <span className="text-xl sm:text-3xl font-serif italic font-black text-[#2A1828]">
-                      S/. {avgTicket} PEN
+                      3 Planes
                     </span>
-                    <p className="text-[10px] sm:text-xs text-[#6A5A6D] font-bold mt-1 line-clamp-1 sm:line-clamp-none">
-                      Pago Único
+                    <p className="text-[10px] sm:text-xs text-[#E31B6D] font-bold mt-1 line-clamp-1 sm:line-clamp-none">
+                      Base · Full · Ultra
                     </p>
                   </div>
                 </div>
 
-                {/* Card 4: Ingresos Totales por Cursos Vendidos */}
+                {/* Card 4: Ingresos por Suscripciones */}
                 <div className="rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 bg-white border border-pink-100/90 flex flex-col justify-between shadow-[0_10px_28px_rgba(227,27,109,0.05)] hover:shadow-[0_14px_34px_rgba(227,27,109,0.09)] transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] sm:text-xs font-bold text-[#6A5A6D] uppercase tracking-wider">
-                      Ventas Cursos
+                      Ingresos Membresías
                     </span>
                     <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#FFF0F6] border border-pink-200/80 flex items-center justify-center text-[#E31B6D] shrink-0">
-                      <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                   <div className="mt-2.5 sm:mt-4">
@@ -1312,7 +1314,7 @@ export function DashboardApp() {
                           Catálogo de Masterclasses
                         </h2>
                         <p className="text-xs text-[#6A5A6D]">
-                          Cursos disponibles para venta individual con acceso de por vida
+                          Masterclasses organizadas por planes de membresía y temarios interactivos
                         </p>
                       </div>
 
@@ -1432,11 +1434,14 @@ export function DashboardApp() {
                                 <div className="flex items-center justify-between pt-3 border-t border-pink-100 text-xs">
                                   <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
                                   <div className="text-right">
-                                    <span className="text-base font-serif italic font-black text-[#E31B6D]">
-                                      S/. {c.price} PEN
-                                    </span>
-                                    <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
-                                      Pago Único
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-block ${
+                                      c.level === 'Clínico VIP'
+                                        ? 'bg-gradient-to-r from-pink-100 to-amber-100 text-amber-900 border border-amber-200'
+                                        : c.level === 'Inicial'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : 'bg-purple-100 text-purple-800'
+                                    }`}>
+                                      {c.level === 'Clínico VIP' ? 'Plan Ultra VIP' : c.level === 'Inicial' ? 'Plan Base' : 'Plan Full'}
                                     </span>
                                   </div>
                                 </div>
@@ -1454,21 +1459,21 @@ export function DashboardApp() {
                                       : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                                   }`}
                                 >
-                                  {c.status === 'published' ? 'Pausar Venta' : 'Activar Venta'}
+                                  {c.status === 'published' ? 'Pausar Curso' : 'Activar Curso'}
                                 </button>
                               ) : isEnrolled(c.id) ? (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
                                   <Check className="w-3 h-3" />
-                                  <span>Adquirido</span>
+                                  <span>Desbloqueado con tu Plan</span>
                                 </span>
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenCheckout(c)}
+                                  onClick={() => setActiveTab('subscriptions')}
                                   className="text-[11px] font-bold px-3.5 py-1 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-xs hover:brightness-105 transition-all cursor-pointer flex items-center gap-1"
                                 >
-                                  <Sparkles className="w-3 h-3" />
-                                  <span>Comprar S/. {c.price}</span>
+                                  <Crown className="w-3 h-3" />
+                                  <span>Desbloquear con Plan</span>
                                 </button>
                               )}
 
@@ -1525,7 +1530,7 @@ export function DashboardApp() {
                               <th className="pb-3">Curso / Masterclass</th>
                               <th className="pb-3">Categoría</th>
                               <th className="pb-3">Docente</th>
-                              <th className="pb-3">Precio Venta</th>
+                              <th className="pb-3">Plan Requerido</th>
                               <th className="pb-3">Estado</th>
                               <th className="pb-3 text-right">Acciones</th>
                             </tr>
@@ -1557,8 +1562,16 @@ export function DashboardApp() {
                                 </td>
                                 <td className="py-3 text-[#6A5A6D] font-bold">{c.category}</td>
                                 <td className="py-3 text-[#6A5A6D]">{c.instructor}</td>
-                                <td className="py-3 font-serif italic font-black text-[#E31B6D]">
-                                  S/. {c.price} PEN
+                                <td className="py-3">
+                                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-block ${
+                                    c.level === 'Clínico VIP'
+                                      ? 'bg-gradient-to-r from-pink-100 to-amber-100 text-amber-900 border border-amber-200'
+                                      : c.level === 'Inicial'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-purple-100 text-purple-800'
+                                  }`}>
+                                    {c.level === 'Clínico VIP' ? 'Plan Ultra VIP' : c.level === 'Inicial' ? 'Plan Base' : 'Plan Full'}
+                                  </span>
                                 </td>
                                 <td className="py-3">
                                   <span
@@ -1777,128 +1790,143 @@ export function DashboardApp() {
                 )}
               </div>
 
-              {/* Grid of All Courses */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((c) => {
-                  const userHasCourse = isEnrolled(c.id);
-
-                  return (
-                    <div
-                      key={c.id}
-                      className="bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-[0_10px_28px_rgba(227,27,109,0.06)] hover:shadow-[0_16px_36px_rgba(227,27,109,0.12)] transition-all flex flex-col justify-between"
+              {/* Courses Content: Empty State or Cards Grid */}
+              {filteredCourses.length === 0 ? (
+                <div className="bg-white rounded-3xl p-12 sm:p-16 border border-pink-100/90 text-center space-y-4 shadow-[0_12px_32px_rgba(227,27,109,0.06)]">
+                  <div className="w-16 h-16 rounded-full bg-[#FFF0F6] text-[#E31B6D] flex items-center justify-center mx-auto border border-pink-200 shadow-2xs">
+                    <BookOpen className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif italic font-bold text-xl text-[#2A1828]">
+                      No hay cursos registrados en el catálogo aún
+                    </h3>
+                    <p className="text-xs text-[#6A5A6D] max-w-md mx-auto mt-1.5 leading-relaxed">
+                      Crea tu primera masterclass con video de YouTube no listado y temario interactivo para comenzar a impartir clases.
+                    </p>
+                  </div>
+                  {hasStaffPrivileges && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCourseToEdit(null);
+                        setIsModalOpen(true);
+                      }}
+                      className="px-6 py-3 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#E31B6D] to-[#F06292] shadow-md hover:shadow-lg hover:scale-102 transition-all cursor-pointer inline-flex items-center gap-2"
                     >
-                      <div>
-                        <div className="relative aspect-[16/10] bg-pink-50 overflow-hidden">
-                          <img src={c.cover_image} alt={c.title} className="w-full h-full object-cover" />
-                          <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D] shadow-xs">
-                            {c.category}
-                          </span>
-                          <span
-                            className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-xs ${
-                              userHasCourse
-                                ? 'bg-emerald-500 text-white'
-                                : c.status === 'published'
-                                ? 'bg-[#E31B6D] text-white'
-                                : 'bg-amber-400 text-slate-900'
-                            }`}
-                          >
-                            {userHasCourse ? '✓ Desbloqueado' : c.status === 'published' ? 'Venta Activa' : 'Borrador'}
-                          </span>
-                        </div>
+                      <Plus className="w-4 h-4" />
+                      <span>+ Crear Mi Primer Curso</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredCourses.map((c) => {
+                    const userHasCourse = isEnrolled(c.id);
 
-                        <div className="p-6 space-y-3">
-                          <div className="flex items-center justify-between text-xs text-[#A08A9E]">
-                            <span>{c.duration} · {c.modules_count || c.modules?.length || 1} módulos</span>
-                            <span className="text-[#E31B6D] font-bold">{c.level}</span>
-                          </div>
-                          <h3 className="font-serif italic font-bold text-lg text-[#2A1828] leading-snug line-clamp-2">
-                            {c.title}
-                          </h3>
-                          <p className="text-xs text-[#6A5A6D] line-clamp-2 leading-relaxed">
-                            {c.description || 'Masterclass jurídica de alto impacto con análisis de teoría del caso y litigio estratégico.'}
-                          </p>
-                          <div className="pt-3 flex items-center justify-between border-t border-pink-100 text-xs">
-                            <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
-                            <div className="text-right">
-                              <span className="text-lg font-serif italic font-black text-[#E31B6D]">
-                                S/. {c.price} PEN
-                              </span>
-                              <span className="block text-[9px] text-[#A08A9E] uppercase font-bold">
-                                Pago Único
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 px-6 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
-                        {hasStaffPrivileges ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(c)}
-                              className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
-                                c.status === 'published'
-                                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                  : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                    return (
+                      <div
+                        key={c.id}
+                        className="bg-white rounded-3xl border border-pink-100 overflow-hidden shadow-[0_10px_28px_rgba(227,27,109,0.06)] hover:shadow-[0_16px_36px_rgba(227,27,109,0.12)] transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="relative aspect-[16/10] bg-pink-50 overflow-hidden">
+                            <img src={c.cover_image} alt={c.title} className="w-full h-full object-cover" />
+                            <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D] shadow-xs">
+                              {c.category}
+                            </span>
+                            <span
+                              className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold shadow-xs ${
+                                userHasCourse
+                                  ? 'bg-emerald-500 text-white'
+                                  : c.status === 'published'
+                                  ? 'bg-[#E31B6D] text-white'
+                                  : 'bg-amber-400 text-slate-900'
                               }`}
                             >
-                              {c.status === 'published' ? 'Pausar' : 'Activar'}
-                            </button>
+                              {userHasCourse ? '✓ Desbloqueado' : c.status === 'published' ? 'Venta Activa' : 'Borrador'}
+                            </span>
+                          </div>
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedCourseForClassroom(c);
-                                  if (c.modules?.[0]?.lessons?.[0]) {
-                                    setActiveLesson(c.modules[0].lessons[0]);
-                                  }
-                                  setActiveTab('classroom');
-                                }}
-                                className="px-3 py-1.5 rounded-full bg-white text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-[#FFF0F6]"
-                              >
-                                <Play className="w-3 h-3 fill-current" />
-                                <span>Ver Aula</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCourseToEdit(c);
-                                  setIsModalOpen(true);
-                                }}
-                                className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D]"
-                                title="Editar"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCourse(c.id, c.title)}
-                                className="p-1.5 rounded-full hover:bg-rose-50 text-rose-600"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                          <div className="p-6 space-y-3">
+                            <div className="flex items-center justify-between text-xs text-[#A08A9E]">
+                              <span>{c.duration} · {c.modules_count || c.modules?.length || 1} módulos</span>
+                              <span className="text-[#E31B6D] font-bold">{c.level}</span>
                             </div>
-                          </>
-                        ) : userHasCourse ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedCourseForClassroom(c);
-                              if (c.modules?.[0]?.lessons?.[0]) {
-                                setActiveLesson(c.modules[0].lessons[0]);
-                              }
-                              setActiveTab('classroom');
-                            }}
-                            className="w-full py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all cursor-pointer"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-current" />
-                            <span>Entrar al Aula Virtual</span>
-                          </button>
-                        ) : (
-                          <div className="w-full flex items-center justify-between gap-2">
+                            <h3 className="font-serif italic font-bold text-lg text-[#2A1828] leading-snug line-clamp-2">
+                              {c.title}
+                            </h3>
+                            <p className="text-xs text-[#6A5A6D] line-clamp-2 leading-relaxed">
+                              {c.description || 'Masterclass jurídica de alto impacto con análisis de teoría del caso y litigio estratégico.'}
+                            </p>
+                            <div className="pt-3 flex items-center justify-between border-t border-pink-100 text-xs">
+                              <span className="text-[#6A5A6D] font-bold">{c.instructor}</span>
+                              <div className="text-right">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-block ${
+                                  c.level === 'Clínico VIP'
+                                    ? 'bg-gradient-to-r from-pink-100 to-amber-100 text-amber-900 border border-amber-200'
+                                    : c.level === 'Inicial'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {c.level === 'Clínico VIP' ? 'Plan Ultra VIP' : c.level === 'Inicial' ? 'Plan Base' : 'Plan Full'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 px-6 bg-[#FFF5F9] border-t border-pink-100 flex items-center justify-between">
+                          {hasStaffPrivileges ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStatus(c)}
+                                className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-colors cursor-pointer ${
+                                  c.status === 'published'
+                                    ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                }`}
+                              >
+                                {c.status === 'published' ? 'Pausar' : 'Activar'}
+                              </button>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCourseForClassroom(c);
+                                    if (c.modules?.[0]?.lessons?.[0]) {
+                                      setActiveLesson(c.modules[0].lessons[0]);
+                                    }
+                                    setActiveTab('classroom');
+                                  }}
+                                  className="px-3 py-1.5 rounded-full bg-white text-[#E31B6D] border border-pink-200 text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-[#FFF0F6]"
+                                >
+                                  <Play className="w-3 h-3 fill-current" />
+                                  <span>Ver Aula</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCourseToEdit(c);
+                                    setIsModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-full hover:bg-pink-100 text-[#6A5A6D]"
+                                  title="Editar"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCourse(c.id, c.title)}
+                                  className="p-1.5 rounded-full hover:bg-rose-50 text-rose-600"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          ) : userHasCourse ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -1908,25 +1936,42 @@ export function DashboardApp() {
                                 }
                                 setActiveTab('classroom');
                               }}
-                              className="px-3.5 py-2 rounded-full bg-white text-[#6A5A6D] hover:text-[#E31B6D] border border-pink-200 text-xs font-bold transition-colors cursor-pointer"
+                              className="w-full py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:brightness-105 transition-all cursor-pointer"
                             >
-                              Ver Muestra
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Entrar al Aula Virtual</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCheckout(c)}
-                              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:brightness-105 active:scale-95 transition-all cursor-pointer"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>Comprar S/. {c.price}</span>
-                            </button>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="w-full flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCourseForClassroom(c);
+                                  if (c.modules?.[0]?.lessons?.[0]) {
+                                    setActiveLesson(c.modules[0].lessons[0]);
+                                  }
+                                  setActiveTab('classroom');
+                                }}
+                                className="px-3.5 py-2 rounded-full bg-white text-[#6A5A6D] hover:text-[#E31B6D] border border-pink-200 text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Ver Muestra
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('subscriptions')}
+                                className="px-4 py-2 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm hover:brightness-105 active:scale-95 transition-all cursor-pointer"
+                              >
+                                <Crown className="w-3.5 h-3.5" />
+                                <span>Desbloquear con Plan</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1999,18 +2044,18 @@ export function DashboardApp() {
                           </span>
                         </div>
                         <p className="text-[11px] text-[#6A5A6D] mt-0.5">
-                          Estás navegando en modo de prueba. Adquiere el curso para desbloquear todas las grabaciones en video 4K y descargar las matrices procesales en Word.
+                          Estás navegando en modo de prueba. Suscríbete a un plan de membresía para desbloquear todas las grabaciones en video HD y descargar las matrices procesales en Word.
                         </p>
                       </div>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleOpenCheckout(selectedCourseForClassroom)}
+                      onClick={() => setActiveTab('subscriptions')}
                       className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs shadow-[0_8px_20px_rgba(227,27,109,0.3)] hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
                     >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Comprar por S/. {selectedCourseForClassroom.price} PEN</span>
+                      <Crown className="w-4 h-4" />
+                      <span>Desbloquear con Plan de Membresía</span>
                     </button>
                   </div>
                 )}
@@ -2021,50 +2066,13 @@ export function DashboardApp() {
                   <div className="lg:col-span-8 space-y-4">
                     {/* Video Player Card / Anti-Leak Secure Lock Screen */}
                     {!currentLessonLocked ? (
-                      <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-pink-200/40 relative aspect-video flex flex-col justify-end">
-                        {isYouTubeUrl(activeLesson?.video_url || '') ? (
-                          <iframe
-                            key={activeLesson?.id || 'yt-player'}
-                            src={getYouTubeEmbedUrl(activeLesson?.video_url || '')!}
-                            title={activeLesson?.title || 'Video de Clase'}
-                            className="w-full h-full aspect-video border-0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
-                        ) : (
-                          /* HTML5 Video Element */
-                          <video
-                            ref={videoPlayerRef}
-                            key={activeLesson?.id || 'default-player'}
-                            controls
-                            playsInline
-                            className="w-full h-full object-cover"
-                            poster={selectedCourseForClassroom?.cover_image}
-                          >
-                            <source
-                              src={
-                                activeLesson?.video_url
-                                  ? getSupabaseVideoUrl(activeLesson.video_url)
-                                  : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-                              }
-                              type="video/mp4"
-                            />
-                            Tu navegador no soporta reproducción de video HTML5.
-                          </video>
-                        )}
-
-                        {/* Stream Provider Pill Overlay */}
-                        <div className="absolute top-4 left-4 z-20 pointer-events-none">
-                          <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-[10px] font-black uppercase text-pink-300 border border-white/10 flex items-center gap-1.5 shadow-md">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            {isYouTubeUrl(activeLesson?.video_url || '')
-                              ? 'YouTube No Listado · HD'
-                              : activeLesson?.is_free_preview && !hasPurchasedClassroomCourse
-                              ? 'Clase de Muestra Gratuita'
-                              : 'Video Streaming · 4K'}
-                          </span>
-                        </div>
-                      </div>
+                      <ProtectedVideoPlayer
+                        videoUrl={activeLesson?.video_url}
+                        poster={selectedCourseForClassroom?.cover_image}
+                        title={activeLesson?.title || selectedCourseForClassroom?.title}
+                        userEmail={profile?.email || supabaseUser?.email || 'alumna@girlsandlaw.pe'}
+                        isFreePreview={Boolean(activeLesson?.is_free_preview && !hasPurchasedClassroomCourse)}
+                      />
                     ) : (
                       /* ZERO LEAK LOCK SCREEN: The private video URL is NEVER rendered or exposed in the DOM */
                       <div className="bg-gradient-to-br from-[#2A1828] via-[#381B32] to-[#1E0F1D] rounded-3xl overflow-hidden shadow-2xl border border-pink-500/30 relative aspect-video flex flex-col items-center justify-center p-6 sm:p-8 text-center text-white">
@@ -2078,20 +2086,17 @@ export function DashboardApp() {
                           {activeLesson?.title || 'Contenido Exclusivo para Alumnas'}
                         </h3>
                         <p className="text-xs text-pink-200/80 max-w-md mt-2 leading-relaxed">
-                          Para reproducir esta clase, acceder al código procesal y descargar las matrices en Word, adquiere el curso con pago único en Soles.
+                          Para reproducir esta clase, acceder al código procesal y descargar las matrices en Word, activa tu plan de membresía mensual en Soles.
                         </p>
                         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                           <button
                             type="button"
-                            onClick={() =>
-                              selectedCourseForClassroom &&
-                              handleOpenCheckout(selectedCourseForClassroom)
-                            }
+                            onClick={() => setActiveTab('subscriptions')}
                             className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:brightness-105 active:scale-95 text-white text-xs font-bold shadow-[0_8px_24px_rgba(227,27,109,0.4)] flex items-center gap-2 cursor-pointer transition-all"
                           >
-                            <Sparkles className="w-4 h-4" />
+                            <Crown className="w-4 h-4" />
                             <span>
-                              Comprar Curso por S/. {selectedCourseForClassroom?.price || 50} PEN
+                              Desbloquear con Plan de Membresía
                             </span>
                           </button>
                           {selectedCourseForClassroom?.modules?.[0]?.lessons?.find(
@@ -2591,8 +2596,8 @@ export function DashboardApp() {
                             <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 text-[10px] font-black uppercase text-[#E31B6D]">
                               {c.category}
                             </div>
-                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-[#E31B6D] text-white text-[10px] font-black">
-                              S/. {c.price} PEN
+                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/95 text-[#E31B6D] text-[10px] font-black shadow-xs">
+                              {c.level === 'Clínico VIP' ? 'Plan Ultra' : c.level === 'Inicial' ? 'Plan Base' : 'Plan Full'}
                             </div>
                           </div>
 
@@ -2603,8 +2608,14 @@ export function DashboardApp() {
                             <p className="text-xs text-[#6A5A6D] line-clamp-2">{c.description}</p>
                             <div className="flex items-center justify-between pt-2 border-t border-pink-100 text-xs">
                               <span className="text-[#A08A9E] font-medium">{c.duration}</span>
-                              <span className="text-[#E31B6D] font-bold font-serif italic text-base">
-                                S/. {c.price} PEN
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                                c.level === 'Clínico VIP'
+                                  ? 'bg-gradient-to-r from-pink-100 to-amber-100 text-amber-900 border border-amber-200'
+                                  : c.level === 'Inicial'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}>
+                                {c.level === 'Clínico VIP' ? 'Plan Ultra VIP' : c.level === 'Inicial' ? 'Plan Base' : 'Plan Full'}
                               </span>
                             </div>
                           </div>
@@ -2613,11 +2624,30 @@ export function DashboardApp() {
                         <div className="p-5 pt-0">
                           <button
                             type="button"
-                            onClick={() => handleOpenCheckout(c)}
+                            onClick={() => {
+                              if (isEnrolled(c.id)) {
+                                setSelectedCourseForClassroom(c);
+                                if (c.modules?.[0]?.lessons?.[0]) {
+                                  setActiveLesson(c.modules[0].lessons[0]);
+                                }
+                                setActiveTab('classroom');
+                              } else {
+                                setActiveTab('subscriptions');
+                              }
+                            }}
                             className="w-full py-3 rounded-full bg-gradient-to-r from-[#FFF0F6] to-[#FFEBF3] hover:from-[#FFE4EF] hover:to-[#FFD6E8] text-[#E31B6D] border border-pink-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Comprar por S/. {c.price} PEN</span>
+                            {isEnrolled(c.id) ? (
+                              <>
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>Ingresar al Aula Virtual</span>
+                              </>
+                            ) : (
+                              <>
+                                <Crown className="w-3.5 h-3.5" />
+                                <span>Desbloquear con Plan de Membresía</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>
