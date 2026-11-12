@@ -58,8 +58,26 @@ export function FounderSection() {
               {t.title}
             </h2>
 
-            <div className="border-l-4 border-pink pl-5 sm:pl-7 py-1">
-              <blockquote className="font-serif text-base sm:text-lg lg:text-xl text-ink/90 italic leading-relaxed">
+            {/* Story & Background from Section 7 */}
+            <p className="text-sm sm:text-base text-muted font-bold leading-relaxed">
+              {t.originStory}
+            </p>
+
+            <div className="border-l-4 border-pink pl-4 sm:pl-6 py-2 bg-[#FFF0F6]/60 rounded-r-2xl">
+              <p className="text-[10.5px] font-black uppercase tracking-wider text-[#E31B6D] mb-1">
+                {lang === 'es' ? 'La inquietud que originó el movimiento' : 'The question that started it all'}
+              </p>
+              <blockquote className="font-serif text-sm sm:text-base text-ink italic leading-relaxed">
+                “{t.reflection}”
+              </blockquote>
+            </div>
+
+            <p className="text-xs sm:text-sm text-muted font-bold leading-relaxed">
+              {t.growth}
+            </p>
+
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFF5F9] to-white border border-pink-100 shadow-2xs">
+              <blockquote className="font-serif text-sm sm:text-base text-ink italic leading-relaxed">
                 {t.quote}
               </blockquote>
             </div>

@@ -10,8 +10,9 @@ import { toneClass, type Tone } from './tone';
 export interface ButtonProps
   extends Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
-    'children' | 'className' | 'style' | 'onClick' | 'type' | 'disabled'
+    'children' | 'style' | 'onClick' | 'type' | 'disabled'
   > {
+  className?: string;
   children: ReactNode;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tone?: Tone;
@@ -97,6 +98,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     loading,
     type = 'button',
     label,
+    className = '',
     ...nativeProps
   },
   ref
@@ -106,7 +108,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       {...nativeProps}
       type={type}
-      className={buttonClasses({ tone, size, variant, block })}
+      className={cx(buttonClasses({ tone, size, variant, block }), className)}
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}

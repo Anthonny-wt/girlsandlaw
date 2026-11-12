@@ -67,9 +67,9 @@ const {
       })();
     </script>
   </head>
-  <body class="min-h-screen flex flex-col bg-[#FFF5F9] text-ink antialiased font-pouf">
+  <body class="min-h-screen flex flex-col bg-[#FFF5F9] text-ink antialiased font-pouf overflow-x-hidden w-full max-w-full">
     <ToasterProvider client:load />
-    <main class="flex-1">
+    <main class="flex-1 w-full max-w-full overflow-x-hidden">
       <slot />
     </main>
     {showFooter && <PoufFooter client:load />}

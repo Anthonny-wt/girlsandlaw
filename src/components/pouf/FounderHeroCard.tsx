@@ -120,21 +120,21 @@ export function FounderHeroCard({
           {currentBio}
         </p>
 
-        {/* Stats Row with 3 Columns (18K Followers · 320 Projects · 4.9 Rating) */}
+        {/* Stats Row with 3 Columns (+17K Seguidoras · 14+ Países · ★ 5.0) */}
         <div className="grid grid-cols-3 gap-1 sm:gap-2 pt-2.5 sm:pt-3 pb-1.5 sm:pb-2 border-t border-pink-100 text-center font-pouf">
           <div>
             <p className="text-xs sm:text-sm font-black text-ink">
-              {(followersCount / 1000).toFixed(1)}K
+              +17K
             </p>
             <p className="text-[9.5px] sm:text-[10px] font-bold text-muted mt-0.5">{t.followers}</p>
           </div>
           <div className="border-x border-pink-100">
-            <p className="text-xs sm:text-sm font-black text-ink">+12h</p>
+            <p className="text-xs sm:text-sm font-black text-ink">14+</p>
             <p className="text-[9.5px] sm:text-[10px] font-bold text-muted mt-0.5">{t.clinical}</p>
           </div>
           <div>
             <p className="text-xs sm:text-sm font-black text-ink flex items-center justify-center gap-0.5">
-              <span className="text-amber-400">★</span> 4.9
+              <span className="text-amber-400">★</span> 5.0
             </p>
             <p className="text-[9.5px] sm:text-[10px] font-bold text-muted mt-0.5">{t.rating}</p>
           </div>

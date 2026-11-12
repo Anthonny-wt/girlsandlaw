@@ -27,8 +27,7 @@ export function PoufHero() {
             {t.title1}{' '}
             <Highlight tone="pink" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1">
               {t.titleHighlight1}
-            </Highlight>
-            .<br className="hidden sm:inline" />{' '}
+            </Highlight>{' '}
             <span className="font-serif italic font-normal">{t.title2}</span>{' '}
             <Highlight tone="yellow" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1">
               {t.titleHighlight2}
@@ -90,8 +89,6 @@ export function PoufHero() {
         <div className="lg:col-span-5 flex justify-center mt-6 lg:mt-0 px-2 sm:px-0">
           <FounderHeroCard
             name="Roxana Rivera"
-            role="FUNDADORA & DIRECTORA LEGAL"
-            bio="Redefiniendo el ejercicio del derecho desde la autenticidad, la excelencia procesal y la sororidad para juristas de alto impacto."
             photoSrc="/roxana.png"
           />
         </div>

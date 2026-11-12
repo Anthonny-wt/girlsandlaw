@@ -42,7 +42,7 @@ export function PoufNavbar() {
               Girls <span className="text-[#E31B6D] italic">&amp;</span> Law
             </span>
             <span className="hidden xs:inline-block text-[8px] sm:text-[9.5px] font-black tracking-[0.2em] text-[#E31B6D] uppercase leading-none mt-0.5">
-              Masterclass
+              Comunidad &amp; Movimiento
             </span>
           </div>
         </a>

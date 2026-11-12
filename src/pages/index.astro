@@ -5,6 +5,7 @@ import { PoufHero } from '@/components/pouf/PoufHero';
 import { PoufFeatures } from '@/components/pouf/PoufFeatures';
 import { PoufSyllabus } from '@/components/pouf/PoufSyllabus';
 import { FounderSection } from '@/components/sections/FounderSection';
+import { PoufIdentity } from '@/components/pouf/PoufIdentity';
 import { PoufPricing } from '@/components/pouf/PoufPricing';
 import { PoufFAQ } from '@/components/pouf/PoufFAQ';
 import { PoufBottomCTA } from '@/components/pouf/PoufBottomCTA';
@@ -14,8 +15,8 @@ import { SpotifyFloatingPlayer } from '@/components/pouf/SpotifyFloatingPlayer';
 ---
 
 <Layout
-  title="Masterclass: Litigio de Alto Impacto | Girls & Law"
-  description="La Masterclass definitiva para abogadas y juristas que buscan dominar los tribunales con poder, argumentación estratégica y autenticidad. Por Girls & Law."
+  title="Girls and Law | Mujeres multifacéticas transformando el Derecho"
+  description="Girls and Law es una comunidad y movimiento internacional fundado por Roxana Rivera para transformar la mentalidad tradicional sobre lo que significa ser una abogada y romper estereotipos."
 >
   {/* 1st-Pouf Floating Capsule Sticky Navbar (follows when scrolling) */}
   <PoufNavbar client:load />
@@ -34,7 +35,10 @@ import { SpotifyFloatingPlayer } from '@/components/pouf/SpotifyFloatingPlayer';
     {/* 4. Instructor Leadership (Roxana Rivera) */}
     <FounderSection client:visible />
 
-    {/* 5. 1st-Pouf Pricing Cards with Segmented Switcher */}
+    {/* 5. Institutional Identity (Section 9) */}
+    <PoufIdentity client:visible />
+
+    {/* 6. 1st-Pouf Pricing Cards with Segmented Switcher */}
     <PoufPricing client:visible />
 
     {/* 6. 1st-Pouf Accordion FAQ Cards */}
