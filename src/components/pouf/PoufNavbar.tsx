@@ -151,16 +151,18 @@ export function PoufNavbar() {
           </a>
 
           {/* CTA Inscribirme Button - Desktop only (hidden on mobile where sticky bottom nav or scroll handles it) */}
-          <Button
-            size="sm"
-            tone="pink"
-            className="hidden lg:inline-flex !px-4 xl:!px-5 !py-2 sm:!py-2.5 !text-xs sm:!text-sm font-black whitespace-nowrap shrink-0"
-            onClick={() => {
-              document.getElementById('precios')?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            {t.enroll}
-          </Button>
+          <div className="hidden lg:block shrink-0">
+            <Button
+              size="sm"
+              tone="pink"
+              className="!px-4 xl:!px-5 !py-2 sm:!py-2.5 !text-xs sm:!text-sm font-black whitespace-nowrap"
+              onClick={() => {
+                document.getElementById('precios')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              {t.enroll}
+            </Button>
+          </div>
         </div>
       </nav>
     </header>

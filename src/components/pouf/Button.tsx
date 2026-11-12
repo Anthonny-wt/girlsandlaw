@@ -1,4 +1,5 @@
 import { cva, cx } from 'class-variance-authority';
+import { twMerge } from 'tailwind-merge';
 import {
   forwardRef,
   type ButtonHTMLAttributes,
@@ -108,7 +109,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       {...nativeProps}
       type={type}
-      className={cx(buttonClasses({ tone, size, variant, block }), className)}
+      className={twMerge(buttonClasses({ tone, size, variant, block }), className)}
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}

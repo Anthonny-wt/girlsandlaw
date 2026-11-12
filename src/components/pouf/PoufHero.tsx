@@ -10,34 +10,33 @@ export function PoufHero() {
   const t = DICTIONARY[lang].hero;
 
   return (
-    <section id="trailer" className="pt-2 sm:pt-6 pb-10 sm:pb-20 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
+    <section id="trailer" className="pt-2 sm:pt-6 pb-10 sm:pb-20 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 w-full max-w-full overflow-hidden">
       {/* 2-Column Hero Grid: Left Content + Right Founder Card (from user design) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full max-w-full min-w-0">
         {/* Left Column: Masterclass Headline & Value Proposition */}
-        <div className="lg:col-span-7 text-center lg:text-left space-y-4 sm:space-y-6">
+        <div className="lg:col-span-7 text-center lg:text-left space-y-4 sm:space-y-6 w-full max-w-full min-w-0">
           {/* 1st-Pouf Pill Badge */}
-          <div className="flex justify-center lg:justify-start">
-            <Badge tone="pink" className="cushion-control-active text-[10px] sm:text-xs !py-1 sm:!py-1.5 !px-3 sm:!px-4">
+          <div className="flex justify-center lg:justify-start max-w-full">
+            <Badge tone="pink" className="cushion-control-active text-[10px] sm:text-xs !py-1 sm:!py-1.5 !px-3 sm:!px-4 max-w-full text-center">
               {t.badge}
             </Badge>
           </div>
 
           {/* 1st-Pouf Heading with Highlights */}
-          <h1 className="font-pouf font-black text-ink text-center lg:text-left text-2xl xs:text-3xl sm:text-4xl lg:text-[46px] tracking-tight leading-[1.2] sm:leading-[1.15]">
-            {t.title1}{' '}
+          <h1 className="font-pouf font-black text-ink text-center lg:text-left text-xl xs:text-2xl sm:text-3xl lg:text-[44px] tracking-tight leading-[1.25] sm:leading-[1.15] break-words max-w-full">
+            <span className="inline-block">{t.title1}</span>{' '}
             <Highlight tone="pink" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1">
               {t.titleHighlight1}
             </Highlight>{' '}
             <span className="font-serif italic font-normal">{t.title2}</span>{' '}
             <Highlight tone="yellow" className="!px-2 sm:!px-3 !py-0.5 sm:!py-1">
               {t.titleHighlight2}
-            </Highlight>{' '}
-            {t.title3}
+            </Highlight>
           </h1>
 
           {/* Description in friendly 1st-Pouf Text */}
-          <div className="max-w-xl mx-auto lg:mx-0 px-2 sm:px-0">
-            <p className="font-bold text-muted text-xs sm:text-base leading-relaxed">
+          <div className="max-w-xl mx-auto lg:mx-0 px-1 sm:px-0">
+            <p className="font-bold text-muted text-xs sm:text-base leading-relaxed break-words">
               {t.description}
             </p>
           </div>
@@ -67,19 +66,19 @@ export function PoufHero() {
           </div>
 
           {/* Guarantee & Pricing footnote */}
-          <p className="text-[10.5px] sm:text-xs font-bold text-muted text-center lg:text-left px-2 sm:px-0">
+          <p className="text-[10.5px] sm:text-xs font-bold text-muted text-center lg:text-left px-1 sm:px-0 break-words">
             {t.guarantee}
           </p>
 
           {/* Trust Highlights Row */}
-          <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2 text-[10.5px] sm:text-xs font-black text-ink">
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs">
+          <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-black text-ink max-w-full">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs max-w-full text-center">
               🏛️ {t.pills.courtrooms}
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs max-w-full text-center">
               📄 {t.pills.models}
             </span>
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-pill bg-white cushion-row shadow-2xs max-w-full text-center">
               👑 {t.pills.mentorship}
             </span>
           </div>

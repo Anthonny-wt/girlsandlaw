@@ -36,8 +36,8 @@ export function Highlight({
   return (
     <span
       className={cx(
-        'pouf-highlight inline-block px-3 py-0.5 rounded-[12px] text-[var(--on-accent)] bg-[var(--tone,var(--pink))]',
-        '[box-shadow:inset_0_-4px_0_rgba(0,0,0,0.1)] font-black',
+        'pouf-highlight inline-block max-w-full px-2 sm:px-3 py-0.5 rounded-[12px] text-[var(--on-accent)] bg-[var(--tone,var(--pink))]',
+        '[box-shadow:inset_0_-4px_0_rgba(0,0,0,0.1)] font-black break-words',
         toneClass(tone),
         className
       )}

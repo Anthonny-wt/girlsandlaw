@@ -53,9 +53,9 @@ export function Badge({
   return (
     <span
       className={cx(
-        'pouf-badge inline-flex items-center gap-[6px] text-[12px] font-black tracking-[0.4px] uppercase',
-        'text-[var(--on-accent)] bg-[var(--tone,var(--pink))] rounded-pill px-3 py-[5px] [box-shadow:none]',
-        'flex-none whitespace-nowrap self-start',
+        'pouf-badge inline-flex items-center gap-[6px] text-[10.5px] sm:text-[12px] font-black tracking-[0.4px] uppercase',
+        'text-[var(--on-accent)] bg-[var(--tone,var(--pink))] rounded-pill px-2.5 sm:px-3 py-1 sm:py-[5px] [box-shadow:none]',
+        'max-w-full text-center whitespace-normal sm:whitespace-nowrap break-words',
         toneClass(tone),
         className
       )}
