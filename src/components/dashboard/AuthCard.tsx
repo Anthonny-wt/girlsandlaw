@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { sileo } from 'sileo';
-import { supabase } from '@/lib/supabase';
+import {
+  supabase,
+  authenticateLocalOrRegisteredUser,
+  registerLocalStudentAccount,
+} from '@/lib/supabase';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -24,22 +28,33 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
 
     try {
       if (isRegister) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        let authUser: User | null = null;
+        let requiresVerification = false;
 
-        if (error) {
-          throw error;
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+          });
+
+          if (!error && data) {
+            if (data.session && data.user) {
+              authUser = data.user;
+            } else if (data.user) {
+              requiresVerification = true;
+            }
+          }
+        } catch {
+          // Supabase signup failed/rate-limited
         }
 
-        if (data.session && data.user) {
+        if (authUser) {
           sileo.success({
             title: '¡Cuenta creada con éxito!',
             description: 'Bienvenida al Campus de Girls & Law',
           });
-          onSuccess(data.user);
-        } else {
+          onSuccess(authUser);
+        } else if (requiresVerification) {
           const msg =
             '¡Registro recibido! Revisa tu bandeja de entrada o spam para verificar tu cuenta antes de iniciar sesión.';
           setInfoMessage(msg);
@@ -47,24 +62,48 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
             title: 'Registro recibido',
             description: 'Revisa tu bandeja para confirmar tu correo',
           });
+        } else {
+          // Fallback registration local for student/demo
+          const { user } = await registerLocalStudentAccount(email, password);
+          sileo.success({
+            title: '¡Cuenta creada con éxito!',
+            description: 'Bienvenida al Campus de Girls & Law',
+          });
+          onSuccess(user);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        let authUser: User | null = null;
 
-        if (error) {
-          throw error;
-        }
-
-        if (data.user) {
-          sileo.success({
-            title: '¡Bienvenida!',
-            description: 'Acceso verificado en el Campus Virtual',
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
           });
-          onSuccess(data.user);
+
+          if (!error && data?.user) {
+            authUser = data.user;
+          }
+        } catch {
+          // Fall through to registered users check
         }
+
+        // Si falló en Supabase (ej: cuentas creadas en el panel de roles, prueba@gmail.com, o rate limit)
+        if (!authUser) {
+          const localAuth = await authenticateLocalOrRegisteredUser(email, password);
+          if (localAuth) {
+            authUser = localAuth.user;
+          }
+        }
+
+        if (!authUser) {
+          throw new Error('Credenciales incorrectas. Verifica tu correo y contraseña registrados.');
+        }
+
+        sileo.success({
+          title: '¡Bienvenida!',
+          description: 'Acceso verificado en el Campus Virtual',
+        });
+        onSuccess(authUser);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al autenticar';
@@ -100,6 +139,9 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         provider: 'google',
         options: {
           redirectTo: `${redirectOrigin}/dashboard`,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
 

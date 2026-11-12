@@ -145,8 +145,8 @@ export function UserFormModal({ isOpen, onClose, onSave, userToEdit }: UserFormM
                 placeholder="Contraseña segura (mín. 6 caracteres)"
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#FFF9FB] border border-pink-200 text-[#2A1828] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#E31B6D]/40 transition-all"
               />
-              <p className="text-[10px] text-[#A08A9E]">
-                Si se deja en blanco se generará una contraseña temporal por defecto.
+              <p className="text-[11px] text-[#A08A9E] font-medium">
+                Si se deja en blanco se asignará la contraseña por defecto: <strong className="text-[#E31B6D] font-mono select-all">GirlsAndLaw2026!</strong>
               </p>
             </div>
           )}

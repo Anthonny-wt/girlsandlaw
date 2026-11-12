@@ -10,7 +10,7 @@ interface FounderHeroCardProps {
 }
 
 export function FounderHeroCard({
-  photoSrc = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
+  photoSrc = '/roxana.png',
   name = 'Roxana Rivera',
   role,
   bio,
@@ -34,7 +34,7 @@ export function FounderHeroCard({
       className={`relative w-full max-w-[310px] xs:max-w-[340px] sm:max-w-[370px] mx-auto rounded-[32px] sm:rounded-[38px] bg-white cushion-card border border-pink-100 overflow-hidden transition-all duration-300 hover:translate-y-[-4px] select-none shadow-2xl ${className}`}
     >
       {/* Top Photo Frame */}
-      <div className="relative aspect-[4/4.6] w-full bg-[#F5EBF0] overflow-hidden">
+      <div className="relative aspect-[4/4.6] w-full bg-gradient-to-b from-[#FFF0F6] to-[#FFE2ED] overflow-hidden">
         <img
           id="founder-photo"
           src={photoSrc}

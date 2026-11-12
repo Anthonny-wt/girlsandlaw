@@ -113,7 +113,7 @@ export function PoufHero() {
             name="Roxana Rivera"
             role="FUNDADORA & DIRECTORA LEGAL"
             bio="Redefiniendo el ejercicio del derecho desde la autenticidad, la excelencia procesal y la sororidad para juristas de alto impacto."
-            photoSrc="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop"
+            photoSrc="/roxana.png"
           />
         </div>
       </div>

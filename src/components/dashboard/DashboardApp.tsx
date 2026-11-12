@@ -33,6 +33,7 @@ import {
   isUserEnrolledInCourse,
   getPaymentSettings,
   savePaymentSettings,
+  LOCAL_STORAGE_ACTIVE_USER_KEY,
 } from '@/lib/supabase';
 import { AuthCard } from './AuthCard';
 import { CourseFormModal } from './CourseFormModal';
@@ -176,7 +177,7 @@ export function DashboardApp() {
     }
   };
 
-  // Initial Load: Check Supabase Session
+  // Initial Load: Check Supabase Session or Local Active Session
   useEffect(() => {
     async function init() {
       setLoading(true);
@@ -191,6 +192,24 @@ export function DashboardApp() {
           setUserEnrollments(enrollments);
           if (p?.role === 'alumna') {
             setActiveTab('classroom');
+          }
+        } else if (typeof window !== 'undefined') {
+          // Check local registered active session
+          const localActive = localStorage.getItem(LOCAL_STORAGE_ACTIVE_USER_KEY);
+          if (localActive) {
+            try {
+              const user = JSON.parse(localActive) as User;
+              setSupabaseUser(user);
+              const p = await getUserProfile(user.id, user.email);
+              setProfile(p);
+              const enrollments = await getUserEnrollments(user.id, p?.level);
+              setUserEnrollments(enrollments);
+              if (p?.role === 'alumna') {
+                setActiveTab('classroom');
+              }
+            } catch {
+              // fallback
+            }
           }
         }
       } catch {
@@ -245,9 +264,13 @@ export function DashboardApp() {
           setActiveTab('classroom');
         }
       } else {
-        setSupabaseUser(null);
-        setProfile(null);
-        setUserEnrollments([]);
+        const localActive =
+          typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_ACTIVE_USER_KEY) : null;
+        if (!localActive) {
+          setSupabaseUser(null);
+          setProfile(null);
+          setUserEnrollments([]);
+        }
       }
     });
 
@@ -272,6 +295,9 @@ export function DashboardApp() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LOCAL_STORAGE_ACTIVE_USER_KEY);
+    }
     setSupabaseUser(null);
     setProfile(null);
     setPreviewRole(null);

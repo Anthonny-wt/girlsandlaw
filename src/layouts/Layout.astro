@@ -44,6 +44,23 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+
+    {/* OAuth Redirect Auto-Detector: Si el proveedor (Google) redirige a la raíz con tokens, enviar de inmediato al dashboard */}
+    <script is:inline>
+      (function () {
+        if (typeof window === 'undefined') return;
+        var pathname = window.location.pathname;
+        var hash = window.location.hash || '';
+        var search = window.location.search || '';
+        var hasOAuthTokens =
+          hash.indexOf('access_token=') !== -1 ||
+          hash.indexOf('error=') !== -1 ||
+          search.indexOf('code=') !== -1;
+        if (hasOAuthTokens && pathname !== '/dashboard' && pathname !== '/dashboard/') {
+          window.location.replace('/dashboard' + search + hash);
+        }
+      })();
+    </script>
   </head>
   <body class="min-h-screen flex flex-col bg-[#FFF5F9] text-ink antialiased font-pouf">
     <ToasterProvider client:load />

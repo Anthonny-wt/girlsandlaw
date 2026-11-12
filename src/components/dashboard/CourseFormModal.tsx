@@ -48,7 +48,7 @@ const PRESET_COVERS = [
   },
   {
     label: 'Roxana Rivera / Abogada Líder',
-    url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
+    url: '/roxana.png',
   },
 ];
 
