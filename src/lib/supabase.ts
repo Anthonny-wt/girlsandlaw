@@ -111,7 +111,7 @@ export interface Student {
   phone?: string;
 }
 
-// Configuración de la Plataforma de Cobro (Yape, Plin, Banco, WhatsApp de Roxana Rivera)
+// Configuración de la Plataforma de Cobro (Yape, Plin, Banco, WhatsApp de Roxana Rivera + Mercado Pago)
 export interface PaymentSettings {
   account_holder: string;
   yape_phone: string;
@@ -121,6 +121,11 @@ export interface PaymentSettings {
   cci: string;
   whatsapp_number: string;
   instructions: string;
+  // Pasarela Automática Mercado Pago
+  enable_mercadopago: boolean;
+  mercadopago_public_key: string;
+  mercadopago_access_token: string;
+  mercadopago_sandbox: boolean;
 }
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
@@ -132,6 +137,10 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   cci: '00219300982341204518',
   whatsapp_number: '987654321',
   instructions: 'Realiza la transferencia por Yape, Plin o BCP e ingresa tu código de 6 dígitos. También puedes enviar tu comprobante directamente por WhatsApp.',
+  enable_mercadopago: true,
+  mercadopago_public_key: '',
+  mercadopago_access_token: '',
+  mercadopago_sandbox: true,
 };
 
 export function getPaymentSettings(): PaymentSettings {
@@ -153,6 +162,72 @@ export function savePaymentSettings(settings: PaymentSettings): PaymentSettings 
     localStorage.setItem('girls_and_law_payment_settings_v1', JSON.stringify(settings));
   }
   return settings;
+}
+
+// Crear preferencia dinámica en Mercado Pago Checkout Pro (Cobra cualquier precio al instante)
+export async function createMercadoPagoPreference(params: {
+  title: string;
+  price: number;
+  courseId?: string;
+  planId?: string;
+  userEmail: string;
+  userName?: string;
+  userId: string;
+  settings: PaymentSettings;
+}): Promise<{ init_point: string; id: string } | null> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4321';
+  const targetQuery = params.courseId
+    ? `course_id=${encodeURIComponent(params.courseId)}`
+    : `plan_id=${encodeURIComponent(params.planId || '')}`;
+
+  const token = params.settings.mercadopago_access_token?.trim();
+  if (token) {
+    try {
+      const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              id: params.courseId || params.planId || 'item-legal',
+              title: params.title,
+              description: `Girls & Law - Acceso a ${params.title}`,
+              quantity: 1,
+              unit_price: Number(params.price),
+              currency_id: 'PEN',
+            },
+          ],
+          payer: {
+            email: params.userEmail,
+            name: params.userName || params.userEmail.split('@')[0],
+          },
+          back_urls: {
+            success: `${origin}/dashboard?payment=success&${targetQuery}`,
+            failure: `${origin}/dashboard?payment=failure&${targetQuery}`,
+            pending: `${origin}/dashboard?payment=pending&${targetQuery}`,
+          },
+          auto_return: 'approved',
+          external_reference: `${params.userId}::${params.courseId || params.planId}`,
+          statement_descriptor: 'GIRLSLANDLAW',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          init_point: params.settings.mercadopago_sandbox ? (data.sandbox_init_point || data.init_point) : data.init_point,
+          id: data.id,
+        };
+      }
+    } catch (err) {
+      console.warn('Error al generar preferencia real en Mercado Pago:', err);
+    }
+  }
+
+  return null;
 }
 
 // Sample video URLs (high quality legal / lecture streams for testing)

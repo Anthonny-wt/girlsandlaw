@@ -5,13 +5,13 @@ import { useLanguage, DICTIONARY } from '@/lib/i18n';
 import { GraduationCap } from 'lucide-react';
 
 export function PoufNavbar() {
-  const [activeLink, setActiveLink] = useState('#trailer');
+  const [activeLink, setActiveLink] = useState('#cursos');
   const { lang, setLanguage } = useLanguage();
   const t = DICTIONARY[lang].nav;
 
-  // 5 Central Links (removed 'Preguntas' as requested for cleaner breathing room)
+  // 5 Central Links
   const navLinks = [
-    { key: 'vision', label: t.vision, href: '#trailer' },
+    { key: 'courses', label: lang === 'es' ? 'Cursos' : 'Courses', href: '#cursos' },
     { key: 'methodology', label: t.methodology, href: '#metodologia' },
     { key: 'syllabus', label: t.syllabus, href: '#temario' },
     { key: 'founder', label: t.founder, href: '#fundadora' },

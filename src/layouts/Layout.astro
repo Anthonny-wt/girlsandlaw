@@ -45,18 +45,23 @@ const {
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
 
-    {/* OAuth Redirect Auto-Detector: Si el proveedor (Google) redirige a la raíz con tokens, enviar de inmediato al dashboard */}
+    {/* OAuth & Email Verification Redirect Auto-Detector: Si el proveedor o el correo de activación redirigen a la raíz con tokens, enviar de inmediato al dashboard */}
     <script is:inline>
       (function () {
         if (typeof window === 'undefined') return;
         var pathname = window.location.pathname;
         var hash = window.location.hash || '';
         var search = window.location.search || '';
-        var hasOAuthTokens =
+        var hasAuthTokens =
           hash.indexOf('access_token=') !== -1 ||
           hash.indexOf('error=') !== -1 ||
-          search.indexOf('code=') !== -1;
-        if (hasOAuthTokens && pathname !== '/dashboard' && pathname !== '/dashboard/') {
+          hash.indexOf('type=signup') !== -1 ||
+          hash.indexOf('type=recovery') !== -1 ||
+          hash.indexOf('type=email_change') !== -1 ||
+          hash.indexOf('confirmation_token=') !== -1 ||
+          search.indexOf('code=') !== -1 ||
+          search.indexOf('type=') !== -1;
+        if (hasAuthTokens && pathname !== '/dashboard' && pathname !== '/dashboard/') {
           window.location.replace('/dashboard' + search + hash);
         }
       })();

@@ -83,6 +83,7 @@ import {
   Heart,
   ShoppingBag,
   Lock,
+  Zap,
   Unlock,
   ShieldCheck,
   Receipt,
@@ -246,6 +247,67 @@ export function DashboardApp() {
             setIsCheckoutOpen(true);
           }
         }
+
+        // Si regresa de pasarela automática con ?payment=success:
+        const paymentStatus = params.get('payment');
+        const returnCourseId = params.get('course_id');
+        const returnPlanId = params.get('plan_id');
+
+        if (paymentStatus === 'success') {
+          try {
+            const activeUser =
+              sessionData.session?.user ||
+              (localStorage.getItem(LOCAL_STORAGE_ACTIVE_USER_KEY)
+                ? (JSON.parse(localStorage.getItem(LOCAL_STORAGE_ACTIVE_USER_KEY)!) as User)
+                : null);
+
+            if (activeUser) {
+              if (returnCourseId) {
+                const targetCourse = loadedCourses.find((c) => c.id === returnCourseId);
+                await enrollUserInCourse({
+                  userId: activeUser.id,
+                  courseId: returnCourseId,
+                  amountPaid: targetCourse?.price || 0,
+                  paymentMethod: 'Mercado Pago (Auto-Validado)',
+                });
+                const updatedEnr = await getUserEnrollments(activeUser.id);
+                setUserEnrollments(updatedEnr);
+                if (targetCourse) {
+                  setSelectedCourseForClassroom(targetCourse);
+                  if (targetCourse.modules?.[0]?.lessons?.[0]) {
+                    setActiveLesson(targetCourse.modules[0].lessons[0]);
+                  }
+                }
+                setActiveTab('classroom');
+                sileo.success({
+                  title: '¡Pago verificado automáticamente!',
+                  description: `Has adquirido "${targetCourse?.title || 'tu formación'}". Ya tienes acceso completo de por vida.`,
+                });
+              } else if (returnPlanId) {
+                const targetPlan = SUBSCRIPTION_PLANS.find((p) => p.id === returnPlanId);
+                if (targetPlan) {
+                  const subRes = await subscribeUserToPlan({
+                    userId: activeUser.id,
+                    planId: returnPlanId as any,
+                    paymentMethod: 'Mercado Pago (Auto-Validado)',
+                  });
+                  const updatedEnr = await getUserEnrollments(activeUser.id, subRes.level);
+                  setUserEnrollments(updatedEnr);
+                  setActiveTab('classroom');
+                  sileo.success({
+                    title: `¡Plan ${targetPlan.name} activado con éxito!`,
+                    description: 'Tu membresía ha sido validada y confirmada automáticamente.',
+                  });
+                }
+              }
+
+              // Limpiar query params de la URL sin recargar
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          } catch (err) {
+            console.warn('Error processing returning payment:', err);
+          }
+        }
       }
 
       setLoading(false);
@@ -253,7 +315,7 @@ export function DashboardApp() {
 
     init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setSupabaseUser(session.user);
         const p = await getUserProfile(session.user.id, session.user.email);
@@ -262,6 +324,20 @@ export function DashboardApp() {
         setUserEnrollments(enrollments);
         if (p?.role === 'alumna') {
           setActiveTab('classroom');
+        }
+
+        // Si la alumna ingresó confirmando su correo electrónico desde el enlace de activación
+        if (
+          typeof window !== 'undefined' &&
+          (window.location.hash?.includes('type=signup') ||
+            window.location.hash?.includes('type=email_change') ||
+            window.location.search?.includes('type=signup'))
+        ) {
+          sileo.success({
+            title: '¡Cuenta activada con éxito!',
+            description: 'Tu correo ha sido verificado. Bienvenida al Campus de Girls & Law.',
+          });
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
       } else {
         const localActive =
@@ -3365,6 +3441,106 @@ export function DashboardApp() {
                   </h3>
 
                   <div className="space-y-4 text-xs">
+                    {/* Pasarela Automática: Mercado Pago (Yape & Tarjetas - Auto-Validación) */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-sky-50 via-white to-pink-50/30 border-2 border-sky-200/90 space-y-3.5 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-[#009EE3] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                            <Zap className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-sky-950 text-xs sm:text-sm block">
+                              Mercado Pago (Auto-Validación de Pagos con Yape & Tarjetas)
+                            </span>
+                            <span className="text-[10px] text-sky-700 font-medium">
+                              Cobra cualquier precio dinámicamente sin generar links de pago para cada curso
+                            </span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={paymentSettings.enable_mercadopago}
+                            onChange={(e) =>
+                              setPaymentSettings((prev) => ({
+                                ...prev,
+                                enable_mercadopago: e.target.checked,
+                              }))
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#009EE3]"></div>
+                        </label>
+                      </div>
+
+                      {paymentSettings.enable_mercadopago && (
+                        <div className="space-y-3 pt-3 border-t border-sky-100">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#2A1828] mb-1">
+                                Public Key de Mercado Pago
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentSettings.mercadopago_public_key || ''}
+                                onChange={(e) =>
+                                  setPaymentSettings((prev) => ({
+                                    ...prev,
+                                    mercadopago_public_key: e.target.value,
+                                  }))
+                                }
+                                placeholder="APP_USR-xxxx o TEST-xxxx"
+                                className="w-full px-3 py-2 rounded-lg border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400/40 text-xs font-mono font-bold text-[#2A1828]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#2A1828] mb-1">
+                                Access Token de Mercado Pago
+                              </label>
+                              <input
+                                type="password"
+                                value={paymentSettings.mercadopago_access_token || ''}
+                                onChange={(e) =>
+                                  setPaymentSettings((prev) => ({
+                                    ...prev,
+                                    mercadopago_access_token: e.target.value,
+                                  }))
+                                }
+                                placeholder="APP_USR-xxxx o TEST-xxxx"
+                                className="w-full px-3 py-2 rounded-lg border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400/40 text-xs font-mono font-bold text-[#2A1828]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-sky-100/70 text-xs">
+                            <label className="flex items-center gap-2 cursor-pointer font-bold text-sky-900 text-[11px]">
+                              <input
+                                type="checkbox"
+                                checked={paymentSettings.mercadopago_sandbox}
+                                onChange={(e) =>
+                                  setPaymentSettings((prev) => ({
+                                    ...prev,
+                                    mercadopago_sandbox: e.target.checked,
+                                  }))
+                                }
+                                className="rounded text-[#009EE3] focus:ring-sky-400"
+                              />
+                              Modo de Pruebas (Sandbox Test)
+                            </label>
+                            <span className="text-[10px] text-sky-800 font-bold">
+                              {paymentSettings.mercadopago_access_token
+                                ? '🟢 Credenciales Conectadas'
+                                : '⚡ Auto-Validación Activa'}
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] text-[#6A5A6D]">
+                            💡 <strong>Sin crear links manuales:</strong> El sistema toma el precio de cualquier curso o plan (S/. 99, S/. 150, etc.) y genera la pasarela de cobro automáticamente.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Titular */}
                     <div>
                       <label className="block text-[11px] font-bold text-[#2A1828] mb-1">

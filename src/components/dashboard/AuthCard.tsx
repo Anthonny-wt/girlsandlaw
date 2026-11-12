@@ -5,7 +5,17 @@ import {
   authenticateLocalOrRegisteredUser,
   registerLocalStudentAccount,
 } from '@/lib/supabase';
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  ShieldCheck,
+  AlertCircle,
+  RefreshCw,
+  CheckCircle2,
+  Inbox,
+  Sparkles,
+} from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthCardProps {
@@ -20,10 +30,64 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
+  // Email confirmation states
+  const [isEmailPendingConfirmation, setIsEmailPendingConfirmation] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendStatusMessage, setResendStatusMessage] = useState<string | null>(null);
+
+  const handleResendVerification = async () => {
+    const targetEmail = unconfirmedEmail || email;
+    if (!targetEmail) {
+      sileo.error({
+        title: 'Correo requerido',
+        description: 'Por favor ingresa tu correo electrónico.',
+      });
+      return;
+    }
+
+    setResendingEmail(true);
+    setResendStatusMessage(null);
+
+    try {
+      const redirectOrigin =
+        typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4321';
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: targetEmail,
+        options: {
+          emailRedirectTo: `${redirectOrigin}/dashboard`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setResendStatusMessage(
+        `¡Enlace reenviado! Revisa la bandeja de entrada o spam de ${targetEmail}`
+      );
+      sileo.success({
+        title: 'Correo reenviado',
+        description: `Se envió un nuevo enlace de activación a ${targetEmail}`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'No se pudo reenviar el correo de activación';
+      sileo.error({
+        title: 'Error al reenviar',
+        description: msg,
+      });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setInfoMessage(null);
+    setResendStatusMessage(null);
     setLoading(true);
 
     try {
@@ -32,9 +96,15 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         let requiresVerification = false;
 
         try {
+          const redirectOrigin =
+            typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4321';
+
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+              emailRedirectTo: `${redirectOrigin}/dashboard`,
+            },
           });
 
           if (!error && data) {
@@ -43,9 +113,21 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
             } else if (data.user) {
               requiresVerification = true;
             }
+          } else if (error) {
+            const errLower = (error.message || '').toLowerCase();
+            if (
+              errLower.includes('already registered') ||
+              errLower.includes('user already exists')
+            ) {
+              throw new Error('Este correo ya está registrado. Por favor selecciona "Iniciar Sesión".');
+            }
+            throw error;
           }
-        } catch {
-          // Supabase signup failed/rate-limited
+        } catch (signupErr: any) {
+          if (signupErr?.message?.includes('ya está registrado')) {
+            throw signupErr;
+          }
+          // Supabase signup failed/rate-limited fallback
         }
 
         if (authUser) {
@@ -55,12 +137,11 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
           });
           onSuccess(authUser);
         } else if (requiresVerification) {
-          const msg =
-            '¡Registro recibido! Revisa tu bandeja de entrada o spam para verificar tu cuenta antes de iniciar sesión.';
-          setInfoMessage(msg);
+          setIsEmailPendingConfirmation(true);
+          setUnconfirmedEmail(email);
           sileo.info({
-            title: 'Registro recibido',
-            description: 'Revisa tu bandeja para confirmar tu correo',
+            title: '¡Casi listo! Activa tu cuenta',
+            description: 'Revisa tu correo para activar tu acceso',
           });
         } else {
           // Fallback registration local for student/demo
@@ -82,8 +163,21 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
 
           if (!error && data?.user) {
             authUser = data.user;
+          } else if (error) {
+            const errLower = (error.message || '').toLowerCase();
+            if (
+              errLower.includes('email not confirmed') ||
+              errLower.includes('email_not_confirmed')
+            ) {
+              setIsEmailPendingConfirmation(true);
+              setUnconfirmedEmail(email);
+              throw new Error('EMAIL_NOT_CONFIRMED');
+            }
           }
-        } catch {
+        } catch (authErr: any) {
+          if (authErr?.message === 'EMAIL_NOT_CONFIRMED') {
+            throw authErr;
+          }
           // Fall through to registered users check
         }
 
@@ -106,7 +200,27 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
         onSuccess(authUser);
       }
     } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'EMAIL_NOT_CONFIRMED') {
+        setErrorMessage(null);
+        setIsEmailPendingConfirmation(true);
+        setUnconfirmedEmail(email);
+        sileo.info({
+          title: 'Cuenta pendiente de activación',
+          description: 'Abre tu correo y haz clic en el enlace para activar tu cuenta',
+        });
+        return;
+      }
+
       const msg = err instanceof Error ? err.message : 'Error al autenticar';
+      const msgLower = msg.toLowerCase();
+
+      if (msgLower.includes('email not confirmed')) {
+        setErrorMessage(null);
+        setIsEmailPendingConfirmation(true);
+        setUnconfirmedEmail(email);
+        return;
+      }
+
       const formatted =
         msg === 'Invalid login credentials'
           ? 'Credenciales incorrectas. Verifica tu correo y contraseña registrados.'
@@ -124,6 +238,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
     setInfoMessage(null);
+    setIsEmailPendingConfirmation(false);
     setLoading(true);
 
     sileo.info({
@@ -201,6 +316,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
               setIsRegister(false);
               setErrorMessage(null);
               setInfoMessage(null);
+              setIsEmailPendingConfirmation(false);
             }}
             className={`flex-1 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
               !isRegister
@@ -216,6 +332,7 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
               setIsRegister(true);
               setErrorMessage(null);
               setInfoMessage(null);
+              setIsEmailPendingConfirmation(false);
             }}
             className={`flex-1 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
               isRegister
@@ -227,7 +344,82 @@ export function AuthCard({ onSuccess }: AuthCardProps) {
           </button>
         </div>
 
-        {/* Alerts */}
+        {/* Banner Informativo cuando está en Registro */}
+        {isRegister && !isEmailPendingConfirmation && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-[#FFF0F6] to-[#FFE8F2] border border-pink-200/90 text-[#9E2A5D] text-xs font-medium flex items-start gap-2.5 shadow-2xs animate-in fade-in duration-150">
+            <Mail className="w-4 h-4 shrink-0 text-[#E31B6D] mt-0.5" />
+            <p className="leading-snug">
+              <strong className="font-bold text-[#E31B6D]">Activación por correo:</strong> Al crear tu cuenta, te enviaremos un correo con un enlace de confirmación. Haz clic en él para activar tu cuenta antes de tu primer ingreso.
+            </p>
+          </div>
+        )}
+
+        {/* Alerta Destacada: Correo de Activación Pendiente */}
+        {isEmailPendingConfirmation && (
+          <div className="mb-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-100/40 border-2 border-amber-300 text-amber-950 text-xs shadow-md space-y-3 animate-in fade-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-200/70 text-amber-900 shrink-0">
+                <Inbox className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-black text-sm text-amber-900 leading-tight">
+                  ¡Debes activar tu cuenta por correo!
+                </h3>
+                <p className="text-amber-950/90 text-xs leading-relaxed font-medium">
+                  Hemos enviado un enlace de confirmación a:{' '}
+                  <strong className="font-black text-amber-950 underline underline-offset-2">
+                    {unconfirmedEmail || email}
+                  </strong>
+                  . Por favor abre tu correo y haz clic en el enlace para activar tu cuenta antes de iniciar sesión.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/90 border border-amber-200/80 text-[11px] text-amber-900 space-y-1.5 shadow-2xs">
+              <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                <span>📌</span> ¿No ves el correo en tu bandeja principal?
+              </p>
+              <ul className="list-disc pl-4 space-y-1 text-amber-950/80 font-normal">
+                <li>Revisa tu carpeta de <strong>Spam</strong> o <strong>Correo no deseado</strong>.</li>
+                <li>En Gmail, revisa las pestañas <strong>Promociones</strong> o <strong>Notificaciones</strong>.</li>
+                <li>El correo proviene del sistema oficial de acceso de <em>Girls &amp; Law</em>.</li>
+              </ul>
+            </div>
+
+            {resendStatusMessage && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{resendStatusMessage}</span>
+              </div>
+            )}
+
+            <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendingEmail}
+                className="flex-1 px-4 py-2.5 rounded-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 active:scale-95 transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${resendingEmail ? 'animate-spin' : ''}`} />
+                <span>{resendingEmail ? 'Reenviando correo...' : 'Reenviar enlace de activación'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEmailPendingConfirmation(false);
+                  setIsRegister(false);
+                  setErrorMessage(null);
+                }}
+                className="px-4 py-2.5 rounded-full bg-white hover:bg-amber-100/50 text-amber-900 border border-amber-300 font-bold text-xs text-center cursor-pointer active:scale-95 transition-all shadow-2xs"
+              >
+                Ya lo activé, Iniciar Sesión
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Alerts de Error */}
         {errorMessage && (
           <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2 animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
