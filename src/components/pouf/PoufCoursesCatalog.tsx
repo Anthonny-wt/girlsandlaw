@@ -49,11 +49,11 @@ export function PoufCoursesCatalog() {
 
   // Categorías dinámicas basadas en los cursos disponibles
   const categories = [
-    { id: 'all', label: 'Todos los Cursos' },
-    { id: 'Litigio', label: 'Litigio & Teoría del Caso' },
-    { id: 'Oralidad', label: 'Oralidad & Audiencias' },
-    { id: 'Redacción', label: 'Redacción Procesal' },
-    { id: 'Marca & Negocio', label: 'Marca & Honorarios' },
+    { id: 'all', shortLabel: 'Todos', label: 'Todos los Cursos' },
+    { id: 'Litigio', shortLabel: 'Litigio', label: 'Litigio & Teoría del Caso' },
+    { id: 'Oralidad', shortLabel: 'Oralidad', label: 'Oralidad & Audiencias' },
+    { id: 'Redacción', shortLabel: 'Redacción', label: 'Redacción Procesal' },
+    { id: 'Marca & Negocio', shortLabel: 'Honorarios', label: 'Marca & Honorarios' },
   ];
 
   const filteredCourses = courses.filter((c) => {
@@ -75,59 +75,62 @@ export function PoufCoursesCatalog() {
   };
 
   return (
-    <section id="cursos" className="mt-14 sm:mt-20 scroll-mt-24">
+    <section id="cursos" className="mt-12 sm:mt-20 scroll-mt-24">
       {/* Header Estilo Coursera con Identidad Girls & Law */}
-      <div className="text-center max-w-3xl mx-auto px-4">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FFF0F6] border border-pink-200/90 text-[#E31B6D] text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-2xs mb-3">
+      <div className="text-center max-w-3xl mx-auto px-3 sm:px-4">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1 rounded-full bg-[#FFF0F6] border border-pink-200/90 text-[#E31B6D] text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-2xs mb-2.5">
           <GraduationCap className="w-3.5 h-3.5 text-[#E31B6D]" />
           <span>Catálogo Oficial de Formaciones Jurídicas</span>
         </div>
         <h2 className="font-serif italic font-bold text-2xl sm:text-4xl text-[#2A1828] leading-tight">
           Explora Nuestras Masterclasses &amp; Especializaciones
         </h2>
-        <p className="mt-2 text-xs sm:text-sm text-[#6A5A6D] font-medium max-w-2xl mx-auto leading-relaxed">
+        <p className="mt-2 text-xs sm:text-sm text-[#6A5A6D] font-medium max-w-2xl mx-auto leading-relaxed px-2 sm:px-0">
           Cursos clínicos con casos reales, plantillas procesales en Word descargables y acompañamiento de alto nivel para juristas que buscan destacar con autoridad y autenticidad.
         </p>
       </div>
 
-      {/* Barra de Filtros / Pestañas de Categoría (Pills estilo Coursera) */}
-      <div className="mt-8 flex items-center justify-center gap-2 flex-wrap px-4">
-        {categories.map((cat) => {
-          const isActive = selectedCategory === cat.id;
-          const count =
-            cat.id === 'all'
-              ? courses.length
-              : courses.filter((c) =>
-                  c.category?.toLowerCase().includes(cat.id.toLowerCase()) ||
-                  cat.id.toLowerCase().includes(c.category?.toLowerCase() || '')
-                ).length;
+      {/* Barra de Filtros / Pestañas de Categoría (Scroll horizontal táctil en celular) */}
+      <div className="mt-6 sm:mt-8 px-2 sm:px-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar sm:justify-center py-2 px-2 scroll-smooth snap-x">
+          {categories.map((cat) => {
+            const isActive = selectedCategory === cat.id;
+            const count =
+              cat.id === 'all'
+                ? courses.length
+                : courses.filter((c) =>
+                    c.category?.toLowerCase().includes(cat.id.toLowerCase()) ||
+                    cat.id.toLowerCase().includes(c.category?.toLowerCase() || '')
+                  ).length;
 
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer select-none flex items-center gap-1.5 active:scale-95 ${
-                isActive
-                  ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-md shadow-[#E31B6D]/20 scale-105'
-                  : 'bg-white hover:bg-[#FFF0F6] text-[#6A5A6D] hover:text-[#E31B6D] border border-pink-100 shadow-2xs'
-              }`}
-            >
-              <span>{cat.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  isActive ? 'bg-white/30 text-white' : 'bg-pink-100 text-[#E31B6D]'
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`shrink-0 snap-start px-3.5 sm:px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer select-none flex items-center gap-1.5 active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white shadow-md shadow-[#E31B6D]/20 scale-102'
+                    : 'bg-white hover:bg-[#FFF0F6] text-[#6A5A6D] hover:text-[#E31B6D] border border-pink-100 shadow-2xs'
                 }`}
               >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+                <span className="sm:hidden">{cat.shortLabel}</span>
+                <span className="hidden sm:inline">{cat.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    isActive ? 'bg-white/30 text-white' : 'bg-pink-100 text-[#E31B6D]'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Grid de Cursos estilo Coursera */}
-      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="mt-8 sm:mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8 max-w-7xl mx-auto px-2.5 sm:px-6">
         {filteredCourses.map((course) => {
           const skills = getSkills(course);
           const price = course.price || 50;
@@ -137,7 +140,7 @@ export function PoufCoursesCatalog() {
           return (
             <div
               key={course.id}
-              className="group bg-white rounded-3xl sm:rounded-[32px] border border-pink-100/90 shadow-[0_12px_32px_rgba(227,27,109,0.06)] hover:shadow-[0_20px_48px_rgba(227,27,109,0.14)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col overflow-hidden relative"
+              className="group bg-white rounded-[26px] sm:rounded-[32px] border border-pink-100/90 shadow-[0_8px_24px_rgba(227,27,109,0.06)] hover:shadow-[0_20px_48px_rgba(227,27,109,0.14)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col overflow-hidden relative"
             >
               {/* Cover Image con Badges */}
               <div className="relative aspect-[16/9.5] w-full overflow-hidden bg-gradient-to-br from-[#FFF0F6] to-[#FFE2ED]">
@@ -152,35 +155,35 @@ export function PoufCoursesCatalog() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/15 pointer-events-none" />
 
                 {/* Badge Top Left: Categoría */}
-                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#E31B6D] text-[10px] font-black uppercase tracking-wider shadow-xs border border-pink-100">
+                <span className="absolute top-2.5 sm:top-3 left-2.5 sm:left-3 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/95 backdrop-blur-md text-[#E31B6D] text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider shadow-xs border border-pink-100">
                   {course.category || 'Masterclass'}
                 </span>
 
                 {/* Badge Top Right: Nivel */}
-                <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-900/85 backdrop-blur-md text-amber-300 text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1 border border-white/10">
+                <span className="absolute top-2.5 sm:top-3 right-2.5 sm:right-3 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-900/85 backdrop-blur-md text-amber-300 text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1 border border-white/10">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   <span>{course.level || 'Clínico VIP'}</span>
                 </span>
 
                 {/* Discount Badge Bottom Right */}
                 {discountPct > 0 && (
-                  <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full bg-[#E31B6D] text-white text-[10px] font-black tracking-wide shadow-md">
+                  <span className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 px-2 py-0.5 rounded-full bg-[#E31B6D] text-white text-[9.5px] sm:text-[10px] font-black tracking-wide shadow-md">
                     -{discountPct}% DCTO
                   </span>
                 )}
               </div>
 
               {/* Card Body */}
-              <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-2.5">
+              <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
+                <div className="space-y-2">
                   {/* Provider / Instructor Bar (Estilo Coursera: "Universidad / Empresa") */}
                   <div className="flex items-center gap-2">
                     <img
                       src="/logogirlsandlaw-nobg.webp"
                       alt="Girls & Law"
-                      className="w-5 h-5 object-contain"
+                      className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
                     />
-                    <span className="text-[11px] font-bold text-[#6A5A6D]">
+                    <span className="text-[10.5px] sm:text-[11px] font-bold text-[#6A5A6D]">
                       Girls &amp; Law · <strong className="text-[#2A1828]">{course.instructor || 'Roxana Rivera'}</strong>
                     </span>
                   </div>
@@ -201,15 +204,15 @@ export function PoufCoursesCatalog() {
                   </p>
 
                   {/* Coursera Skills Tags (Habilidades que desarrollarás) */}
-                  <div className="pt-1">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-[#A08A9E] mb-1.5">
+                  <div className="pt-0.5">
+                    <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-[#A08A9E] mb-1">
                       Habilidades clave:
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
                       {skills.slice(0, 3).map((skill, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded-lg bg-[#FFF5F9] border border-pink-100 text-[#E31B6D] text-[10px] font-bold"
+                          className="px-2 py-0.5 rounded-lg bg-[#FFF5F9] border border-pink-100 text-[#E31B6D] text-[9.5px] sm:text-[10px] font-bold"
                         >
                           {skill}
                         </span>
@@ -219,52 +222,57 @@ export function PoufCoursesCatalog() {
                 </div>
 
                 {/* Course Metadata Stats Row */}
-                <div className="pt-3 border-t border-pink-100/80 space-y-3">
-                  <div className="grid grid-cols-3 gap-2 text-[10px] font-bold text-[#6A5A6D]">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <div className="pt-2 sm:pt-3 border-t border-pink-100/80 space-y-2.5 sm:space-y-3">
+                  <div className="grid grid-cols-3 gap-1 py-1.5 text-[10px] sm:text-[11px] font-bold text-[#6A5A6D] bg-[#FFF9FB]/70 rounded-xl px-2">
+                    <div className="flex items-center gap-1 justify-center sm:justify-start">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                       <span>
-                        <strong className="text-[#2A1828]">{course.rating || 4.9}</strong> ({course.students_count || 240}+)
+                        <strong className="text-[#2A1828]">{course.rating || 4.9}</strong>
                       </span>
                     </div>
                     <div className="flex items-center gap-1 justify-center">
-                      <Clock className="w-3.5 h-3.5 text-[#E31B6D] shrink-0" />
-                      <span>{course.duration || '12 horas'}</span>
+                      <Clock className="w-3 h-3 text-[#E31B6D] shrink-0" />
+                      <span>{course.duration || '12h'}</span>
                     </div>
-                    <div className="flex items-center gap-1 justify-end">
+                    <div className="flex items-center gap-1 justify-center sm:justify-end">
                       <BookOpen className="w-3.5 h-3.5 text-sky-600 shrink-0" />
                       <span>{course.modules_count || 4} Módulos</span>
                     </div>
                   </div>
 
                   {/* Price & Action Button Bar */}
-                  <div className="pt-2 flex items-center justify-between gap-3">
-                    <div>
-                      {comparePrice > price && (
-                        <span className="block text-[10px] text-[#A08A9E] line-through">
-                          S/. {comparePrice} PEN
-                        </span>
-                      )}
-                      <div className="flex items-baseline gap-1">
-                        <span className="font-serif italic font-black text-xl sm:text-2xl text-[#E31B6D]">
-                          S/. {price}
-                        </span>
-                        <span className="text-[10px] font-bold text-[#6A5A6D]">PEN</span>
+                  <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                    <div className="flex items-baseline justify-between sm:justify-start gap-2">
+                      <div>
+                        {comparePrice > price && (
+                          <span className="block text-[9.5px] sm:text-[10px] text-[#A08A9E] line-through">
+                            S/. {comparePrice} PEN
+                          </span>
+                        )}
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-serif italic font-black text-xl sm:text-2xl text-[#E31B6D]">
+                            S/. {price}
+                          </span>
+                          <span className="text-[10px] font-bold text-[#6A5A6D]">PEN</span>
+                        </div>
                       </div>
+                      <span className="text-[9.5px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 sm:hidden">
+                        Acceso de por vida
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-2 sm:flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setPreviewCourse(course)}
-                        className="px-3 py-2 rounded-full border border-pink-200 hover:border-[#E31B6D] bg-white hover:bg-[#FFF0F6] text-[#2A1828] hover:text-[#E31B6D] text-xs font-bold transition-all cursor-pointer"
+                        className="w-full sm:w-auto px-3.5 py-2.5 rounded-full border border-pink-200 hover:border-[#E31B6D] bg-white hover:bg-[#FFF0F6] text-[#2A1828] hover:text-[#E31B6D] text-xs font-bold transition-all text-center cursor-pointer active:scale-95"
                       >
-                        Temario
+                        Ver Temario
                       </button>
                       <button
                         type="button"
                         onClick={() => handleEnrollClick(course.id)}
-                        className="px-4 py-2 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:brightness-105 active:scale-95 text-white text-xs font-bold shadow-md shadow-[#E31B6D]/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] hover:brightness-105 active:scale-95 text-white text-xs font-black shadow-md shadow-[#E31B6D]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                       >
                         <span>Inscribirme</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -405,19 +413,24 @@ export function PoufCoursesCatalog() {
             </div>
 
             {/* Modal Footer con Precio y CTA */}
-            <div className="p-4 sm:p-5 bg-[#FFF9FB] border-t border-pink-100 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-[10px] text-[#A08A9E] uppercase font-bold block">
-                  Precio de Acceso Total
-                </span>
-                <span className="font-serif italic font-black text-2xl text-[#E31B6D]">
-                  S/. {previewCourse.price} PEN
+            <div className="p-4 sm:p-5 bg-[#FFF9FB] border-t border-pink-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-baseline justify-between sm:justify-start gap-2">
+                <div>
+                  <span className="text-[10px] text-[#A08A9E] uppercase font-bold block">
+                    Precio de Acceso Total
+                  </span>
+                  <span className="font-serif italic font-black text-2xl text-[#E31B6D]">
+                    S/. {previewCourse.price} PEN
+                  </span>
+                </div>
+                <span className="sm:hidden text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                  Acceso de por vida
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => handleEnrollClick(previewCourse.id)}
-                className="px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#E31B6D]/20 hover:brightness-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#E31B6D] to-[#F06292] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#E31B6D]/20 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Inscribirme en esta Masterclass</span>
                 <ArrowRight className="w-4 h-4" />

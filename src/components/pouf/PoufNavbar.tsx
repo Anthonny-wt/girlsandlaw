@@ -23,9 +23,9 @@ export function PoufNavbar() {
   };
 
   return (
-    <header className="fixed top-2 sm:top-4 inset-x-0 z-50 w-full px-2.5 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-200">
+    <header className="fixed top-2 sm:top-4 inset-x-0 z-50 w-full px-2 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-200">
       <nav
-        className="pouf-navbar pointer-events-auto flex items-center justify-between min-h-[58px] sm:min-h-[78px] px-3.5 sm:px-7 rounded-full bg-white/95 backdrop-blur-md cushion-card border border-pink-100 shadow-xl"
+        className="pouf-navbar pointer-events-auto flex items-center justify-between min-h-[52px] sm:min-h-[78px] px-3 sm:px-7 rounded-full bg-white/95 backdrop-blur-md cushion-card border border-pink-100 shadow-xl"
         aria-label="Navegación Principal"
       >
         {/* Brand / Logo (Using transparent WebP logo) */}

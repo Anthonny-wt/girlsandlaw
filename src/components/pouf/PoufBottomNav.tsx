@@ -7,14 +7,14 @@ export function PoufBottomNav() {
   const t = DICTIONARY[lang].bottomNav;
 
   const tabs = [
+    { id: 'cursos', label: 'Cursos', href: '#cursos', icon: '📚' },
     { id: 'temario', label: t.syllabus, href: '#temario', icon: '⚖️' },
-    { id: 'fundadora', label: t.founder, href: '#fundadora', icon: '👑' },
     { id: 'campus', label: 'Campus', href: '/dashboard', icon: '🎓' },
   ];
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['precios', 'fundadora', 'temario'];
+      const sections = ['precios', 'fundadora', 'temario', 'cursos'];
       for (const id of sections) {
         const el = document.getElementById(id);
         if (el) {
