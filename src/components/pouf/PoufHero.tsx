@@ -10,7 +10,7 @@ export function PoufHero() {
   const t = DICTIONARY[lang].hero;
 
   return (
-    <section id="trailer" className="pt-2 sm:pt-6 pb-10 sm:pb-20 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 w-full max-w-full overflow-hidden">
+    <section id="trailer" className="pt-3 sm:pt-6 pb-10 sm:pb-20 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 w-full max-w-full overflow-hidden">
       {/* 2-Column Hero Grid: Left Content + Right Founder Card (from user design) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full max-w-full min-w-0">
         {/* Left Column: Masterclass Headline & Value Proposition */}

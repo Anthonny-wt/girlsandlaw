@@ -14,7 +14,7 @@ export function PoufNavbar() {
     { key: 'courses', label: lang === 'es' ? 'Cursos' : 'Courses', href: '#cursos' },
     { key: 'methodology', label: t.methodology, href: '#metodologia' },
     { key: 'syllabus', label: t.syllabus, href: '#temario' },
-    { key: 'founder', label: t.founder, href: '#fundadora' },
+    { key: 'identity', label: lang === 'es' ? 'Identidad' : 'Identity', href: '#identidad' },
     { key: 'pricing', label: t.pricing, href: '#precios' },
   ];
 

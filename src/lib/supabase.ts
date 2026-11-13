@@ -558,8 +558,18 @@ export function createLocalAuthUser(profile: UserProfile): User {
   } as User;
 }
 
+// Super Admin and Founder emails with automatic full platform privileges
+export const SUPER_ADMIN_EMAILS = [
+  'anthonnywt@gmail.com',
+  'roxanariveraderecho@gmail.com',
+  '70941837@continental.edu.pe',
+];
+
 // Fetch user profile with role and level from Supabase or local storage
 export async function getUserProfile(userId: string, email?: string): Promise<UserProfile | null> {
+  const normEmail = (email || '').trim().toLowerCase();
+  const isSuper = normEmail && SUPER_ADMIN_EMAILS.includes(normEmail);
+
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -568,7 +578,22 @@ export async function getUserProfile(userId: string, email?: string): Promise<Us
       .maybeSingle();
 
     if (!error && data) {
-      return data as UserProfile;
+      const profile = data as UserProfile;
+      // Auto-elevate founder & super admins
+      const profileEmail = (profile.email || normEmail).trim().toLowerCase();
+      if (SUPER_ADMIN_EMAILS.includes(profileEmail)) {
+        profile.role = 'admin';
+        profile.level = 'vip';
+        // Auto-sync in Supabase if currently stored as alumna
+        if (data.role !== 'admin' || data.level !== 'vip') {
+          supabase
+            .from('profiles')
+            .update({ role: 'admin', level: 'vip', updated_at: new Date().toISOString() })
+            .eq('id', profile.id)
+            .then();
+        }
+      }
+      return profile;
     }
   } catch {
     // Table not created yet
@@ -586,14 +611,18 @@ export async function getUserProfile(userId: string, email?: string): Promise<Us
             (email && u.email && u.email.toLowerCase() === email.toLowerCase())
         );
         if (match) {
+          if (SUPER_ADMIN_EMAILS.includes((match.email || '').toLowerCase().trim())) {
+            match.role = 'admin';
+            match.level = 'vip';
+          }
           return match;
         }
       } catch {}
     }
   }
 
-  // Fallback: If user is the main owner or admin
-  const isSuperAdmin = email === 'anthonnywt@gmail.com';
+  // Fallback: If user is one of the super admins or founder
+  const isSuperAdmin = (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim())) || isSuper;
   return {
     id: userId,
     email: email || '',
